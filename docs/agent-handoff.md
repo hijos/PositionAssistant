@@ -724,7 +724,7 @@
 - 测试命令及结果：在 `client/` 设置工作区 `APPDATA`/`LOCALAPPDATA`/`TEMP` 后执行 `flutter analyze`：No issues found；`flutter test`：58 项全部通过（新增 `test/holdings_overview_test.dart` 13 项、`repository_test.dart` 1 项远端估算补齐测试，`widget_test.dart` 断言改为新文案并新增“已添加基金”守卫）。根目录 `node --check server/accounting.js`、`node --check server/index.js` 通过；`node --test test/accounting.test.js` 14 项通过（新增 1 项覆盖预估市值/预估收益率与过期估值置空）；全量 `node --test test/*.test.js` 67 项中 62 通过、2 跳过、3 失败，已在未修改 `server/accounting.js` 的 HEAD 上复现同样 3 项失败，确认与本次改动无关。
 - 本机视觉核对：用一次性 `RepaintBoundary` 渲染测试输出 1280×800 的首页组合（测试环境缺中文字形，文字显示为方框，但排版可读），确认概览卡片铺满 960 上限宽度、四行标签左对齐且数值右对齐成列、基金行左右两列结构、亏损红色/盈利绿色、缺失正式数据的基金只显示 `预估 —`；该临时测试文件与 PNG 已删除。窄屏结论来自 widget 测试：320 宽下概览卡片实际宽 288（页面 16 内边距），基金名称因右列固定宽度被省略号截断且无溢出异常。
 - 未覆盖或遗留：
-  - 未在 Android 真机或真实远端服务上手工验收；未重新打包 APK（本次未要求）。320×640、常见手机宽度、1280×800 的最终人工验收仍需真机/桌面窗口确认。
+  - 未在 Android 真机或真实远端服务上手工验收。已在本次会话按用户要求补打 release APK 供真机验收：`flutter build apk --release` 成功（Gradle 39.0 秒，增量、未执行 `flutter clean`），产物已按约定重命名为唯一文件 `client\build\app\outputs\flutter-apk\持仓助手.apk`（50.55MB，67 个条目，含 arm64-v8a/armeabi-v7a/x86_64）；重复的 `app-release.apk` 已删除。320×640、常见手机宽度、1280×800 的最终人工验收仍需在真机/桌面窗口确认。
   - 远端 `/api/holdings` 现有部署需重启服务才带上 `estimatedMarketValue`；客户端已有补齐逻辑，因此旧服务也不会显示 `—`。
   - `test/catalog.test.js`、`test/plans.test.js` 的 3 项既有失败不在本次范围，保留原记录。
   - 本机 `flutter` 必须通过管道调用 git，受限沙箱下会报 `CreateFile failed 5`；本次以放宽沙箱运行工具链，未改动项目配置。
