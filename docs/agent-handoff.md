@@ -8,8 +8,9 @@
 - 队列已标记完成：`F01`、`F02`、`F05`、`F09`、`F10`、`F15`、`F16`、`F17`、`F18`、`F19`、`F20`、`F21`、`F22`、`F23`、`F24`、`F25`、`F27`、`F28`、`F29`、`F30`、`F31`、`F32`、`F33`、`F34`、`F35`、`F36`、`F37`、`F38`、`F39`、`F40`、`F48`；其中 F10 上次仅运行语法检查和密码测试，尚无专项越权测试结果，不应视为隔离验收通过。
 - 当前待执行任务：F44 Web 与 Android 远端一致性验收。
 - 待外部验收：`F03`、`F04`、`F06`、`F07`、`F08`、`F11`、`F12`、`F13`、`F26` 为 `implemented_pending_validation`；具体遗留见各项记录。
-- 正在执行的任务：（无）。本次会话完成用户追加的 F48，未启动 F44。
+- 正在执行的任务：（无）。本次会话完成用户追加的 F49（持仓首页概览与持仓行改造），未启动 F44。
 - F48 结果：done；服务端永久删除与批量清理接口、Flutter 仓储与交易记录页交互均已实现并通过本机测试；未做 Android 真机与真实远端手工验收。
+- F49 结果：done；持仓概览改为全宽专用卡片（四行标签/数值对齐、预估收益含说明弹窗）、基金行改为左右两列紧凑布局，统一 `￥`/两位小数/中文括号格式，并补齐远端与服务端的 `estimatedMarketValue`；本机 `flutter analyze` 无问题、`flutter test` 58 项通过；未做真机手工验收与 APK 重打包。
 - 下一任务：F44 Web 与 Android 远端一致性验收。
 - 当前阻塞：无 F48 阻塞；既有 3 项服务端测试失败（`test/catalog.test.js` 缓存时间戳、`test/plans.test.js` 两项）已在未修改的 HEAD 上复现，属本次改动前的缺口。Docker/PostgreSQL 运行验证留待用户 Linux 服务器环境完成。
 - 依据文档：[`functions.md`](../functions.md)
@@ -703,6 +704,32 @@
   - 未改动 Web 原型，Web 端仍无删除已取消记录的能力。
 - 下一任务：F44 Web 与 Android 远端一致性验收；本次停止，不继续。
 - 更新时间：2026-09-29。
+
+### F49：Flutter 持仓首页概览与持仓行改造（用户追加）
+
+- 状态：`done`（实现与本机自动化验收完成）；本次只做用户指定的持仓首页 UI 改造与配套字段补齐，未开始 F44。
+- 修改文件：`client/lib/main.dart`、`client/lib/format_values.dart`（新增）、`client/lib/holding_detail.dart`、`client/lib/data/holding_repository.dart`、`client/test/holdings_overview_test.dart`（新增）、`client/test/widget_test.dart`、`client/test/repository_test.dart`、`server/accounting.js`、`test/accounting.test.js`、本文件。
+- 已实现：
+  - 新增全宽专用组件 `HoldingOverviewCard`（`Card(margin: EdgeInsets.zero)` + `EdgeInsets.fromLTRB(20,20,20,18)`，不再使用 `SectionCard`）。四行固定标签宽度 76、数值 `Expanded` + `TextAlign.right`：总市值、总收益（含收益率）、预估市值、预估收益（含收益率）。
+  - “预估收益”行右侧为 `Icons.info_outline` 的 `IconButton`，点击弹出 `AlertDialog`（标题“预估收益说明”，正文“根据美股最新数据估算”，按钮“知道了”）；估算数据缺失时图标保留。
+  - 概览聚合改为 `HoldingOverviewData`：正式市值/收益只在每只持仓都有值时汇总，否则为 `null`（显示 `—`，缺失正式净值不伪造 0）；估算市值/收益用 `any(... != null)` 区分“无估算”与“估算恰好为 0”；收益率一律用“总收益 ÷ 总成本”，不做单基金收益率平均。
+  - 单只基金行改为 `HoldingListItem`（`InkWell` + 左右两列），右列宽度 320 窄屏 132、其余 152：第一行 `￥1093.74`（18/w600）、第二行 `￥43.74（4.17%）`（14，涨绿跌红）、第三行 `预估 ￥xx.xx（x.xx%）`（13，次要色）；左列为名称（`maxLines: 1` + 省略号）、`539001  310.96份`、`成本 ￥1050.00`。首页不再出现“正式市值/正式收益/暂无有效估算/来源/更新时间”等冗余文案，数据来源信息仍保留在持仓详情页。
+  - 新增 `client/lib/format_values.dart` 统一 `￥`（全角）、两位小数、中文括号 `（ ）`、`—` 与收益配色；`main.dart` 与 `holding_detail.dart` 共用，详情页原先单独使用的半角 `¥` 一并统一。
+  - 数据字段：`server/accounting.js` 的 `holdings()` 新增 `estimatedMarketValue`（份额 × 预估净值，与 `estimatedProfit` 同源同门槛）和 `estimatedProfitRate`；`RemoteHoldingRepository.list()` 在响应缺少这两个字段时按 `estimatedProfit + cost`、`estimatedProfit / cost` 补齐，保留“无估算仍为 `—`”的语义。本地 `LocalHoldingRepository` 原本已提供这两个字段，未改动计算口径。
+- 已确定约定：
+  - 正式口径（市值/收益/收益率）与之前的 `valued` 判定一致，仍要求所有持仓齐备；估算口径放宽为“部分覆盖即汇总”，未覆盖的基金按 0 贡献，避免一只基金缺估算就整块显示 `—`。
+  - 收益颜色暂用 `Colors.green.shade700` / `Colors.red.shade700`；两者与 M3 主题色不一致属已知取舍。
+  - 概览卡片内边距由 20 调整为 20/18 以增强横向存在感；首页各区块统一为“标题 + `SizedBox(height: 4)` + 内容”。
+  - 改造中一度删除了 `fundList()`，但它是删除已添加基金的唯一入口，已按原样恢复并在 `widget_test.dart` 增加守卫断言，防止再次被静默移除。
+- 测试命令及结果：在 `client/` 设置工作区 `APPDATA`/`LOCALAPPDATA`/`TEMP` 后执行 `flutter analyze`：No issues found；`flutter test`：58 项全部通过（新增 `test/holdings_overview_test.dart` 13 项、`repository_test.dart` 1 项远端估算补齐测试，`widget_test.dart` 断言改为新文案并新增“已添加基金”守卫）。根目录 `node --check server/accounting.js`、`node --check server/index.js` 通过；`node --test test/accounting.test.js` 14 项通过（新增 1 项覆盖预估市值/预估收益率与过期估值置空）；全量 `node --test test/*.test.js` 67 项中 62 通过、2 跳过、3 失败，已在未修改 `server/accounting.js` 的 HEAD 上复现同样 3 项失败，确认与本次改动无关。
+- 本机视觉核对：用一次性 `RepaintBoundary` 渲染测试输出 1280×800 的首页组合（测试环境缺中文字形，文字显示为方框，但排版可读），确认概览卡片铺满 960 上限宽度、四行标签左对齐且数值右对齐成列、基金行左右两列结构、亏损红色/盈利绿色、缺失正式数据的基金只显示 `预估 —`；该临时测试文件与 PNG 已删除。窄屏结论来自 widget 测试：320 宽下概览卡片实际宽 288（页面 16 内边距），基金名称因右列固定宽度被省略号截断且无溢出异常。
+- 未覆盖或遗留：
+  - 未在 Android 真机或真实远端服务上手工验收；未重新打包 APK（本次未要求）。320×640、常见手机宽度、1280×800 的最终人工验收仍需真机/桌面窗口确认。
+  - 远端 `/api/holdings` 现有部署需重启服务才带上 `estimatedMarketValue`；客户端已有补齐逻辑，因此旧服务也不会显示 `—`。
+  - `test/catalog.test.js`、`test/plans.test.js` 的 3 项既有失败不在本次范围，保留原记录。
+  - 本机 `flutter` 必须通过管道调用 git，受限沙箱下会报 `CreateFile failed 5`；本次以放宽沙箱运行工具链，未改动项目配置。
+- 下一任务：F44 Web 与 Android 远端一致性验收；本次停止，不继续。
+- 更新时间：2026-09-30。
 
 ## 每次结束会话后的更新模板
 
