@@ -153,6 +153,26 @@ test('持仓成本为零时正式收益率为空', () => {
   assert.equal(result.profitRate, null);
 });
 
+test('有效估值生成预估市值和预估收益率，过期估值则为空', () => {
+  const buy = calculate(trade({entryMode: 'shares', amount: 0, shares: 10, feeMode: 'fixed', fixedFee: 0}), 2);
+  const estimateAt = new Date().toISOString();
+  const [estimated, stale] = holdings(
+    [buy, {...buy, fundCode: '000002'}],
+    [
+      {code: '000001', nav: 2, navDate: '2026-09-24', estimatedNav: 2.2, estimateBaseDate: '2026-09-24', estimateAt},
+      {code: '000002', nav: 2, navDate: '2026-09-24', estimatedNav: 2.2, estimateBaseDate: '2026-09-01', estimateAt: '2020-01-01T00:00:00+08:00'},
+    ],
+  );
+  // 预估市值 = 份额 × 预估净值；预估收益仍按 预估市值 - 成本 计算。
+  assert.equal(estimated.cost, 20);
+  assert.equal(estimated.estimatedMarketValue, 22);
+  assert.equal(estimated.estimatedProfit, 2);
+  assert.ok(Math.abs(estimated.estimatedProfitRate - 2 / 20) < 1e-12);
+  assert.equal(stale.estimatedMarketValue, null);
+  assert.equal(stale.estimatedProfit, null);
+  assert.equal(stale.estimatedProfitRate, null);
+});
+
 test('每日正式收益按现金流调整并排除待确认及取消交易', () => {
   const buy = calculate(trade({entryMode: 'shares', amount: 0, shares: 10, feeMode: 'fixed', fixedFee: 1, date: '2026-09-01'}), 10);
   buy.navDate = '2026-09-01';

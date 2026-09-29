@@ -125,6 +125,10 @@ function holdings(transactions, funds) {
     // as the ledger so clients can display stable values.
     const marketValue = valid ? round(h.shares * f.nav) : null;
     const profit = valid ? round(marketValue - h.cost) : null;
+    // The estimate keeps the same definition as the formal valuation so the
+    // client can show "预估市值" next to "预估收益": shares x estimatedNav.
+    const estimatedMarketValue = estimated ? round(h.shares * f.estimatedNav) : null;
+    const estimatedProfit = estimated ? h.shares * f.estimatedNav - h.cost : null;
     return {
       ...h,
       shares: round(h.shares),
@@ -137,7 +141,9 @@ function holdings(transactions, funds) {
       marketValue,
       profit,
       profitRate: h.cost && valid ? profit / h.cost : null,
-      estimatedProfit: estimated ? h.shares * f.estimatedNav - h.cost : null,
+      estimatedMarketValue,
+      estimatedProfit,
+      estimatedProfitRate: h.cost && estimatedMarketValue != null ? estimatedProfit / h.cost : null,
       estimateAt: f?.estimateAt,
       estimateSource: f?.estimateSource,
       sourceError: f?.sourceError,
