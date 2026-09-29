@@ -30,6 +30,12 @@ class FakeTransactionRepository implements TransactionRepository {
   Future<Map<String, dynamic>> cancel(String id) async => {'id': id};
 
   @override
+  Future<void> deleteCancelled(String id) async {}
+
+  @override
+  Future<int> clearCancelled() async => 0;
+
+  @override
   Future<Map<String, dynamic>> preview(Map<String, dynamic> draft) async {
     lastPreview = draft;
     return {...draft, 'status': 'pending', 'pendingReason': '等待正式净值'};
@@ -114,6 +120,41 @@ void main() {
       expect(cancelled['status'], 'cancelled');
       expect(requests.first['type'], 'buy');
       expect(requests.first['fundName'], '测试基金A');
+      await repo.close();
+    },
+  );
+
+  test(
+    'remote repository calls the permanent delete and bulk clear endpoints',
+    () async {
+      final calls = <String>[];
+      final repo = RemoteTransactionRepository(
+        token: 'session-a',
+        client: MockClient((request) async {
+          expect(request.headers['Authorization'], 'Bearer session-a');
+          calls.add('${request.method} ${request.url.path}');
+          return http.Response(
+            jsonEncode(
+              request.url.path.endsWith('/cancelled')
+                  ? {'ok': true, 'deleted': 3}
+                  : {'ok': true, 'id': 'tx-9'},
+            ),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+      await repo.deleteCancelled('tx-9');
+      expect(await repo.clearCancelled(), 3);
+      expect(calls, [
+        'DELETE /api/transactions/tx-9/permanent',
+        'DELETE /api/transactions/cancelled',
+      ]);
+      await expectLater(
+        repo.deleteCancelled('  '),
+        throwsA(isA<FormatException>()),
+      );
+      expect(calls, hasLength(2));
       await repo.close();
     },
   );

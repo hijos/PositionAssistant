@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:position_assistant/data/nav_repository.dart';
+import 'package:position_assistant/data/repository.dart';
 import 'package:position_assistant/data/sqlite_repository.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -271,4 +272,165 @@ void main() {
       ]);
     },
   );
+
+  test('local permanent delete removes only cancelled records', () async {
+    for (final entry in {
+      'confirmed': 'confirmed',
+      'pending': 'pending',
+      'cancelled': 'cancelled',
+    }.entries) {
+      await repository.put('transactions', entry.key, {
+        'id': entry.key,
+        'fundCode': '000001',
+        'type': 'buy',
+        'entryMode': 'shares',
+        'shares': 10,
+        'amount': 20,
+        'date': '2026-09-24',
+        'cutoff': 'before',
+        'status': entry.value,
+      });
+    }
+    final transactions = LocalTransactionRepository(() async => repository);
+    await expectLater(
+      transactions.deleteCancelled('confirmed'),
+      throwsFormatException,
+    );
+    await expectLater(
+      transactions.deleteCancelled('pending'),
+      throwsFormatException,
+    );
+    await expectLater(
+      transactions.deleteCancelled('missing'),
+      throwsFormatException,
+    );
+    await expectLater(
+      transactions.deleteCancelled('  '),
+      throwsFormatException,
+    );
+    expect((await transactions.list()).map((x) => x['id']), [
+      'cancelled',
+      'confirmed',
+      'pending',
+    ]);
+
+    await transactions.deleteCancelled('cancelled');
+    expect((await transactions.list()).map((x) => x['id']), [
+      'confirmed',
+      'pending',
+    ]);
+    // The deleted record stays gone after reopening the database file.
+    await repository.close();
+    repository = await SqliteRepository.open(
+      factory: databaseFactoryFfi,
+      path: path,
+    );
+    expect(
+      (await LocalTransactionRepository(
+        () async => repository,
+      ).list()).map((x) => x['id']),
+      ['confirmed', 'pending'],
+    );
+  });
+
+  test('local clearCancelled removes every cancelled record only', () async {
+    for (final entry in {
+      'cancelled-a': 'cancelled',
+      'confirmed': 'confirmed',
+      'cancelled-b': 'cancelled',
+      'pending': 'pending',
+    }.entries) {
+      await repository.put('transactions', entry.key, {
+        'id': entry.key,
+        'fundCode': '000001',
+        'status': entry.value,
+      });
+    }
+    final transactions = LocalTransactionRepository(() async => repository);
+    expect(await transactions.clearCancelled(), 2);
+    expect((await transactions.list()).map((x) => x['id']), [
+      'confirmed',
+      'pending',
+    ]);
+    // Idempotent: a second pass has nothing left to delete.
+    expect(await transactions.clearCancelled(), 0);
+    expect((await transactions.list()), hasLength(2));
+  });
+
+  test('failed local clear rolls back and keeps the record', () async {
+    await repository.put('transactions', 'cancelled', {
+      'id': 'cancelled',
+      'fundCode': '000001',
+      'status': 'cancelled',
+    });
+    final transactions = LocalTransactionRepository(
+      () async => _FailingDeleteRepository(repository, 'cancelled'),
+    );
+    await expectLater(
+      transactions.clearCancelled(),
+      throwsA(isA<StateError>()),
+    );
+    expect(
+      (await repository.list('transactions')).single['status'],
+      'cancelled',
+    );
+  });
+}
+
+/// Fails the delete of [failId] so the transaction rollback can be asserted.
+class _FailingDeleteRepository implements Repository {
+  _FailingDeleteRepository(this._delegate, this.failId);
+
+  final Repository _delegate;
+  final String failId;
+
+  @override
+  Future<T> transaction<T>(Future<T> Function(RepositorySession) action) =>
+      _delegate.transaction(
+        (session) => action(_FailingSession(session, failId)),
+      );
+
+  @override
+  Future<Map<String, dynamic>?> get(String collection, String id) =>
+      _delegate.get(collection, id);
+
+  @override
+  Future<List<Map<String, dynamic>>> list(String collection) =>
+      _delegate.list(collection);
+
+  @override
+  Future<void> put(String collection, String id, Map<String, dynamic> value) =>
+      _delegate.put(collection, id, value);
+
+  @override
+  Future<void> delete(String collection, String id) =>
+      _delegate.delete(collection, id);
+
+  @override
+  Future<void> close() => _delegate.close();
+}
+
+class _FailingSession implements RepositorySession {
+  _FailingSession(this._delegate, this.failId);
+
+  final RepositorySession _delegate;
+  final String failId;
+
+  @override
+  Future<Map<String, dynamic>?> get(String collection, String id) =>
+      _delegate.get(collection, id);
+
+  @override
+  Future<List<Map<String, dynamic>>> list(String collection) =>
+      _delegate.list(collection);
+
+  @override
+  Future<void> put(String collection, String id, Map<String, dynamic> value) =>
+      _delegate.put(collection, id, value);
+
+  @override
+  Future<void> delete(String collection, String id) async {
+    if (id == failId) throw StateError('delete failed');
+    await _delegate.delete(collection, id);
+  }
 }

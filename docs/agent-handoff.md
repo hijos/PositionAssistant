@@ -4,14 +4,14 @@
 
 ## 当前状态
 
-- 当前阶段：F43 已完成；F41 已实现，待 Android/Gradle 环境完成专项补充验收；F42 已完成；F26 待 Linux PostgreSQL 与上游行情联通验收；F14 待 Linux PostgreSQL、正式数据源与 Android 真机联调。
-- 队列已标记完成：`F01`、`F02`、`F05`、`F09`、`F10`、`F15`、`F16`、`F17`、`F18`、`F19`、`F20`、`F21`、`F22`、`F23`、`F24`、`F25`、`F27`、`F28`、`F29`、`F30`、`F31`、`F32`、`F33`、`F34`、`F35`、`F36`、`F37`、`F38`、`F39`、`F40`；其中 F10 上次仅运行语法检查和密码测试，尚无专项越权测试结果，不应视为隔离验收通过。
+- 当前阶段：F43 已完成；F41 已实现，待 Android/Gradle 环境完成专项补充验收；F42 已完成；F48（用户追加：已取消交易删除与批量清理）已完成；F26 待 Linux PostgreSQL 与上游行情联通验收；F14 待 Linux PostgreSQL、正式数据源与 Android 真机联调。
+- 队列已标记完成：`F01`、`F02`、`F05`、`F09`、`F10`、`F15`、`F16`、`F17`、`F18`、`F19`、`F20`、`F21`、`F22`、`F23`、`F24`、`F25`、`F27`、`F28`、`F29`、`F30`、`F31`、`F32`、`F33`、`F34`、`F35`、`F36`、`F37`、`F38`、`F39`、`F40`、`F48`；其中 F10 上次仅运行语法检查和密码测试，尚无专项越权测试结果，不应视为隔离验收通过。
 - 当前待执行任务：F44 Web 与 Android 远端一致性验收。
 - 待外部验收：`F03`、`F04`、`F06`、`F07`、`F08`、`F11`、`F12`、`F13`、`F26` 为 `implemented_pending_validation`；具体遗留见各项记录。
-- 正在执行的任务：F43（2026-09-28）：Android 真机补录、跳过、重复操作与应用重启持久化回归，并核实剩余离线验收缺口。
-- F43 结果：done；Android 真机已完成离线定投、补录/跳过、导出、合法覆盖导入、非法包拒绝、模式隔离和重启持久化验收；本地交易在缺少正式净值时正确保持待确认。
+- 正在执行的任务：（无）。本次会话完成用户追加的 F48，未启动 F44。
+- F48 结果：done；服务端永久删除与批量清理接口、Flutter 仓储与交易记录页交互均已实现并通过本机测试；未做 Android 真机与真实远端手工验收。
 - 下一任务：F44 Web 与 Android 远端一致性验收。
-- 当前阻塞：无 F43 主流程阻塞；真机无法人工注入 SQLite 中途异常，事务回滚由专项自动化测试覆盖。Docker/PostgreSQL 运行验证留待用户 Linux 服务器环境完成。
+- 当前阻塞：无 F48 阻塞；既有 3 项服务端测试失败（`test/catalog.test.js` 缓存时间戳、`test/plans.test.js` 两项）已在未修改的 HEAD 上复现，属本次改动前的缺口。Docker/PostgreSQL 运行验证留待用户 Linux 服务器环境完成。
 - 依据文档：[`functions.md`](../functions.md)
 
 ## 任务选择与启动
@@ -167,6 +167,10 @@
 - [ ] `F45` `todo` 导出导入往返验收。
 - [ ] `F46` `todo` 数据库备份恢复验收。
 - [ ] `F47` `todo` 可运行版本交付验收。
+- [x] `F48` `done` 已取消交易的永久删除与批量清理（用户追加任务，不在原队列编号内，插在队列末尾）。
+  - 范围：Flutter 交易记录页长按已取消记录删除、右上角按页面范围批量清理、详情页删除入口，以及服务端单条永久删除和批量清理接口；只覆盖本地 SQLite 与远端服务端，不改 Web 原型。
+  - 验收条件：只有 `cancelled` 记录可删除且需二次确认；删除后列表、导出和后续查询都不再返回该记录；未登录、越权、非取消状态和不存在记录有明确错误；持仓与收益因取消记录原本已被排除而保持不变。
+  - 涉及文件：`server/index.js`、`client/lib/data/transaction_repository.dart`、`client/lib/transaction_history.dart`、`test/transactions.test.js`、`client/test/`、本文件。
 
 ## 已确定约定
 
@@ -673,6 +677,32 @@
 - 阻塞与缺口：F43 的真机主流程已完成：离线定投、补录/跳过、重启持久化、导出入口、合法覆盖导入、非法包拒绝、模式隔离均有证据。仅真机故障注入无法执行，采用专项事务回滚测试作为证据；正式净值缺失时保持待确认属于预期行为。
 - 下一任务：F44 Web 与 Android 远端一致性验收；本次停止，不继续。
 - 更新时间：2026-09-28。
+
+### F48：已取消交易的永久删除与批量清理（用户追加）
+
+- 状态：`done`；本次仅执行用户追加的删除与清理需求，未开始 F44。
+- 修改文件：`server/index.js`、`client/lib/data/transaction_repository.dart`、`client/lib/transaction_history.dart`、`test/transactions.test.js`、`client/test/transaction_history_test.dart`、`client/test/repository_test.dart`、`client/test/transaction_entry_test.dart`、`client/test/holding_detail_test.dart`、本文件。
+- 已实现：
+  - 服务端新增 `DELETE /api/transactions/cancelled`（按当前账号批量物理删除已取消记录，返回 `{ok,deleted}`，空集合返回 `deleted:0` 且幂等）和 `DELETE /api/transactions/:id/permanent`（仅当前账号的 `cancelled` 记录可删，返回 `{ok,id}`；不存在或非本账号 404，状态非 `cancelled` 409）；两条路由都注册在 `DELETE /api/transactions/:id` 之前，避免字面量路径被当作记录编号；删除后调用现有 `save()` 落盘，不重算账本。
+  - `TransactionRepository` 新增 `deleteCancelled(id)` 与 `clearCancelled()`；本地实现在单个 SQLite 事务内校验状态后物理删除，非取消状态和空编号抛出 `FormatException`；远端实现分别调用上述两个接口，批量清理使用 `DELETE` 方法并沿用 Bearer 校验和错误转换。
+  - 交易记录页右上角新增“清理已取消交易”按钮，无已取消记录时禁用，确认文案为“确定删除全部 N 条已取消交易吗？删除后无法恢复。”；长按已取消记录弹出底部菜单（删除交易／取消），确认后刷新列表并提示“交易记录已删除”；详情页对已取消记录改为显示“删除交易”，成功后 `pop(true)` 让历史页重载。
+- 已确定约定：
+  - 采用物理删除且不可恢复，删除范围的“当前页面”语义显式化：普通交易页调用仓储批量清理全部已取消记录；按基金过滤的页面逐条删除它显示的记录，避免只报告本基金数量却删除其他基金数据。该差异由页面 `_clearScope` 一处集中实现。
+  - 只有 `cancelled` 记录可删除，已确认/待确认记录继续走原有“撤销交易”，不提供回收站、撤销删除或后台恢复。
+  - 已取消记录原本就不参与 `holdings()`、收益和持仓统计，因此物理删除不需要重算账本；导入仍接受历史导出包中的 `cancelled` 记录。
+- 修复历史：
+  - 远端批量清理最初被 `request()` 的默认分支发成 `POST`，服务端会拒绝；由新增的远端路由测试发现，已改为 `DELETE /api/transactions/cancelled`。
+  - 交易记录页新增 `didUpdateWidget`：筛选基金或 Repository 变化时重新读取，修复此前切换过滤条件仍显示旧数据的问题（该缺陷由 widget 测试换页时暴露）。
+- 测试命令及结果：
+  - 在 `client/`（按历史约定设置工作区 `APPDATA`/`LOCALAPPDATA`/`TEMP` 指向 `.tooling/`）执行 `flutter analyze`：No issues found；`flutter test`：44 项全部通过（本次新增 3 项仓储测试、8 项 widget 测试、1 项远端路由测试）。
+  - 根目录执行 `node --check server/index.js` 通过；`node --test test/transactions.test.js` 2 项全部通过（新增 1 项覆盖永久删除、批量清理、账号隔离、导出不含已删除记录、删除后磁盘快照不再包含记录）。
+  - `node --test "test/*.test.js"` 结果 67 项中 62 通过、2 跳过、3 失败；已用 `git worktree` 在未修改的 HEAD 上复现同样 3 项失败，确认均为本次改动之前就存在的缺口（`test/catalog.test.js` 缓存时间戳断言、`test/plans.test.js` 两项一期接口返回 404），与本次改动无关。
+- 未覆盖或遗留：
+  - 未在 Android 真机或真实远端服务上手工验收删除与清理；本机只有 widget/仓储/路由级证据。
+  - `test/catalog.test.js` 与 `test/plans.test.js` 的 3 项既有失败未在本任务范围内修复，保留原记录。
+  - 未改动 Web 原型，Web 端仍无删除已取消记录的能力。
+- 下一任务：F44 Web 与 Android 远端一致性验收；本次停止，不继续。
+- 更新时间：2026-09-29。
 
 ## 每次结束会话后的更新模板
 

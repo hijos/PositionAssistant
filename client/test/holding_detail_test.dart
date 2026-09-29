@@ -15,6 +15,19 @@ class DetailRepository implements TransactionRepository {
       records.firstWhere((item) => item['id'] == id);
 
   @override
+  Future<void> deleteCancelled(String id) async =>
+      records.removeWhere((item) => item['id'] == id);
+
+  @override
+  Future<int> clearCancelled() async {
+    final removed = records
+        .where((item) => item['status'] == 'cancelled')
+        .length;
+    records.removeWhere((item) => item['status'] == 'cancelled');
+    return removed;
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> confirmPending() async => records;
 
   @override

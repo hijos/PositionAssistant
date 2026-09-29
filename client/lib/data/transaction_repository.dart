@@ -13,6 +13,13 @@ abstract interface class TransactionRepository {
   Future<Map<String, dynamic>> create(Map<String, dynamic> draft);
   Future<List<Map<String, dynamic>>> confirmPending();
   Future<Map<String, dynamic>> cancel(String id);
+
+  /// Permanently removes a cancelled record; other statuses stay untouched.
+  Future<void> deleteCancelled(String id);
+
+  /// Permanently removes every cancelled record and returns the delete count.
+  Future<int> clearCancelled();
+
   Future<void> close();
 }
 
@@ -172,7 +179,8 @@ String optionalText(dynamic value, int maxLength) {
 }
 
 class LocalTransactionRepository implements TransactionRepository {
-  LocalTransactionRepository(this.open, {LocalNavRepository? nav}) : nav = nav ?? LocalNavRepository(open);
+  LocalTransactionRepository(this.open, {LocalNavRepository? nav})
+    : nav = nav ?? LocalNavRepository(open);
   final Future<Repository> Function() open;
   final LocalNavRepository nav;
 
@@ -207,7 +215,10 @@ class LocalTransactionRepository implements TransactionRepository {
     };
     await storage.put('transactions', record['id'] as String, record);
     final settled = await confirmPending();
-    return settled.firstWhere((item) => item['id'] == record['id'], orElse: () => record);
+    return settled.firstWhere(
+      (item) => item['id'] == record['id'],
+      orElse: () => record,
+    );
   }
 
   @override
@@ -235,6 +246,34 @@ class LocalTransactionRepository implements TransactionRepository {
   }
 
   @override
+  Future<void> deleteCancelled(String id) async {
+    if (id.trim().isEmpty) throw const FormatException('交易记录编号无效');
+    final storage = await open();
+    await storage.transaction((session) async {
+      final target = await session.get('transactions', id);
+      if (target == null) throw const FormatException('交易记录不存在');
+      if (target['status'] != 'cancelled') {
+        throw const FormatException('只能删除已取消交易，请先撤销该交易');
+      }
+      await session.delete('transactions', id);
+    });
+  }
+
+  @override
+  Future<int> clearCancelled() async {
+    final storage = await open();
+    return storage.transaction((session) async {
+      final cancelled = (await session.list('transactions'))
+          .where((record) => record['status'] == 'cancelled')
+          .toList();
+      for (final record in cancelled) {
+        await session.delete('transactions', '${record['id']}');
+      }
+      return cancelled.length;
+    });
+  }
+
+  @override
   Future<void> close() async {}
 }
 
@@ -250,23 +289,35 @@ class RemoteTransactionRepository implements TransactionRepository {
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
     };
-    final path = method == 'GET' || method == 'create'
-        ? '/api/transactions'
-        : method == 'confirm'
-        ? '/api/transactions/confirm'
-        : method == 'preview'
-        ? '/api/transactions/preview'
-        : '/api/transactions/${method.substring('cancel:'.length)}';
+    final cancelId = method.startsWith('cancel:')
+        ? method.substring('cancel:'.length)
+        : null;
+    final deleteId = method.startsWith('delete:')
+        ? method.substring('delete:'.length)
+        : null;
+    final path = switch (method) {
+      'GET' || 'create' => '/api/transactions',
+      'confirm' => '/api/transactions/confirm',
+      'preview' => '/api/transactions/preview',
+      'clearCancelled' => '/api/transactions/cancelled',
+      _ when cancelId != null => '/api/transactions/$cancelId',
+      _ when deleteId != null => '/api/transactions/$deleteId/permanent',
+      _ => '/api/transactions/$method',
+    };
     final uri = apiUri(path);
-    final response = method == 'GET'
-        ? await client.get(uri, headers: headers)
-        : method.startsWith('cancel:')
-        ? await client.delete(uri, headers: headers)
-        : await client.post(
-            uri,
-            headers: headers,
-            body: draft == null ? null : jsonEncode(draft),
-          );
+    final response = switch (method) {
+      'GET' => await client.get(uri, headers: headers),
+      'clearCancelled' => await client.delete(uri, headers: headers),
+      _ when cancelId != null || deleteId != null => await client.delete(
+        uri,
+        headers: headers,
+      ),
+      _ => await client.post(
+        uri,
+        headers: headers,
+        body: draft == null ? null : jsonEncode(draft),
+      ),
+    };
     if (response.statusCode == 401) throw Exception('登录已失效，请重新登录');
     if (response.statusCode < 200 || response.statusCode >= 300) {
       String? error;
@@ -313,6 +364,20 @@ class RemoteTransactionRepository implements TransactionRepository {
   @override
   Future<Map<String, dynamic>> cancel(String id) async =>
       (await request('cancel:$id') as Map).cast<String, dynamic>();
+
+  @override
+  Future<void> deleteCancelled(String id) async {
+    if (id.trim().isEmpty) throw const FormatException('交易记录编号无效');
+    await request('delete:$id');
+  }
+
+  @override
+  Future<int> clearCancelled() async {
+    final value = (await request('clearCancelled') as Map)
+        .cast<String, dynamic>();
+    final deleted = value['deleted'];
+    return deleted is num ? deleted.toInt() : 0;
+  }
 
   @override
   Future<void> close() async => client.close();
