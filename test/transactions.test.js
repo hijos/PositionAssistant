@@ -28,12 +28,23 @@ function call(port, method, route, token, body) {
       let text = '';
       response.setEncoding('utf8');
       response.on('data', chunk => { text += chunk; });
-      response.on('end', () => resolve({status: response.statusCode, body: text ? JSON.parse(text) : null}));
+      response.on('end', () => resolve({status: response.statusCode, body: parseBody(text)}));
     });
     request.on('error', reject);
     if (body) request.write(JSON.stringify(body));
     request.end();
   });
+}
+
+// Some endpoints answer with plain text (for example `sendStatus(401)`), so a
+// failed parse keeps the raw body instead of throwing.
+function parseBody(text) {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 }
 
 const draft = requestId => ({
@@ -43,12 +54,15 @@ const draft = requestId => ({
   cutoff: 'before', clientRequestId: requestId,
 });
 
+// The database file is shared by every test in this file, so the temp
+// directory only goes away after the last one.
+test.after(() => fs.rmSync(tempDir, {recursive: true, force: true}));
+
 test('待确认交易按账号确认且重复创建幂等', async t => {
   const server = app.listen(0);
   t.after(() => {
     server.close();
     global.fetch = realFetch;
-    fs.rmSync(tempDir, {recursive: true, force: true});
   });
   const port = server.address().port;
   assert.equal((await call(port, 'GET', '/api/daily-returns', null)).status, 401);
@@ -146,4 +160,74 @@ test('待确认交易按账号确认且重复创建幂等', async t => {
   const unchanged = (await call(port, 'GET', '/api/transactions', tokenA)).body;
   assert.equal(unchanged.find(item => item.id === dependentBuy.body.id).status, 'confirmed');
   assert.equal(unchanged.find(item => item.id === dependentSell.body.id).status, 'confirmed');
+});
+
+test('已取消交易可永久删除和批量清理且保持账号隔离', async t => {
+  const server = app.listen(0);
+  t.after(() => {
+    server.close();
+    global.fetch = realFetch;
+  });
+  const port = server.address().port;
+  const today = draft('permanent-date').date;
+  navRows = [{DWJZ: '2.00', FSRQ: today}];
+  const registered = await call(port, 'POST', '/api/auth/register', null, {email: 'p@example.com', password: 'password-p'});
+  assert.equal(registered.status, 201, JSON.stringify(registered.body));
+  assert.equal((await call(port, 'POST', '/api/auth/register', null, {email: 'q@example.com', password: 'password-q'})).status, 201);
+  const tokenP = (await call(port, 'POST', '/api/auth/login', null, {email: 'p@example.com', password: 'password-p'})).body.token;
+  const tokenQ = (await call(port, 'POST', '/api/auth/login', null, {email: 'q@example.com', password: 'password-q'})).body.token;
+
+  const create = async (token, requestId, body = {}) => {
+    const response = await call(port, 'POST', '/api/transactions', token, {...draft(requestId), ...body});
+    assert.ok([200, 201].includes(response.status), `创建失败：${response.status}`);
+    return response.body;
+  };
+
+  // 未登录、非取消状态和未知记录都不能永久删除。
+  assert.equal((await call(port, 'DELETE', '/api/transactions/cancelled', null)).status, 401);
+  assert.equal((await call(port, 'DELETE', '/api/transactions/whatever/permanent', null)).status, 401);
+  const pending = await create(tokenP, 'p-pending');
+  const notCancelled = await call(port, 'DELETE', `/api/transactions/${pending.id}/permanent`, tokenP);
+  assert.equal(notCancelled.status, 409);
+  assert.match(notCancelled.body.error, /已取消/);
+  assert.equal((await call(port, 'DELETE', '/api/transactions/p-missing/permanent', tokenP)).status, 404);
+
+  // 撤销后可以永久删除，记录从列表和磁盘快照中消失。
+  assert.equal((await call(port, 'DELETE', `/api/transactions/${pending.id}`, tokenP)).status, 200);
+  const permanent = await call(port, 'DELETE', `/api/transactions/${pending.id}/permanent`, tokenP);
+  assert.equal(permanent.status, 200);
+  assert.deepEqual(permanent.body, {ok: true, id: pending.id});
+  assert.equal((await call(port, 'GET', '/api/transactions', tokenP)).body.some(item => item.id === pending.id), false);
+  assert.equal((await call(port, 'DELETE', `/api/transactions/${pending.id}/permanent`, tokenP)).status, 404);
+  assert.equal(JSON.parse(fs.readFileSync(dbPath, 'utf8')).transactions.some(item => item.id === pending.id), false, '删除后重启服务不应恢复记录');
+
+  // 批量清理只影响当前账号的取消记录，且保持幂等。
+  const buy = await create(tokenP, 'p-buy');
+  const cancelledSell = await create(tokenP, 'p-sell', {type: 'sell', entryMode: 'shares', amount: 0, shares: 5});
+  assert.equal(cancelledSell.status, 'confirmed');
+  assert.equal((await call(port, 'DELETE', `/api/transactions/${cancelledSell.id}`, tokenP)).status, 200);
+  const survivor = await create(tokenP, 'p-survivor');
+  const otherPending = await create(tokenQ, 'q-pending');
+  assert.equal((await call(port, 'DELETE', `/api/transactions/${otherPending.id}`, tokenQ)).status, 200);
+  const holdingsBefore = (await call(port, 'GET', '/api/holdings', tokenP)).body;
+
+  const cleared = await call(port, 'DELETE', '/api/transactions/cancelled', tokenP);
+  assert.equal(cleared.status, 200);
+  assert.deepEqual(cleared.body, {ok: true, deleted: 1});
+  const remaining = (await call(port, 'GET', '/api/transactions', tokenP)).body;
+  assert.deepEqual(remaining.map(item => item.id).sort(), [buy.id, survivor.id].sort());
+  assert.equal((await call(port, 'GET', '/api/transactions', tokenQ)).body[0].id, otherPending.id);
+  assert.equal((await call(port, 'GET', '/api/transactions', tokenQ)).body[0].status, 'cancelled');
+  assert.deepEqual((await call(port, 'GET', '/api/holdings', tokenP)).body, holdingsBefore, '删除已取消交易不应改变持仓');
+  assert.deepEqual((await call(port, 'GET', '/api/export', tokenP)).body.data.transactions.map(item => item.id).sort(), [buy.id, survivor.id].sort());
+  assert.equal(JSON.parse(fs.readFileSync(dbPath, 'utf8')).transactions.some(item => item.id === cancelledSell.id), false);
+  assert.deepEqual((await call(port, 'DELETE', '/api/transactions/cancelled', tokenP)).body, {ok: true, deleted: 0});
+
+  // 跨账号不能永久删除他人记录。
+  const qCancelled = await create(tokenQ, 'q-second');
+  assert.equal((await call(port, 'DELETE', `/api/transactions/${qCancelled.id}`, tokenQ)).status, 200);
+  assert.equal((await call(port, 'DELETE', `/api/transactions/${qCancelled.id}/permanent`, tokenP)).status, 404);
+  const foreignClear = await call(port, 'DELETE', '/api/transactions/cancelled', tokenP);
+  assert.deepEqual(foreignClear.body, {ok: true, deleted: 0});
+  assert.equal((await call(port, 'GET', '/api/transactions', tokenQ)).body.length, 2);
 });

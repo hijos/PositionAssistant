@@ -141,6 +141,14 @@ function confirmPending(ownerId=null){
  return pending;
 }
 app.post('/api/transactions/confirm',async(req,res)=>{try{res.json({ok:true,transactions:await confirmPending(user(req))})}catch(e){res.status(409).json({error:e.message})}});
+app.delete('/api/transactions/cancelled',(req,res)=>{const ownerId=user(req);
+ const removed=db.transactions.filter(t=>t.userId===ownerId&&t.status==='cancelled');
+ if(!removed.length)return res.json({ok:true,deleted:0});
+ const ids=new Set(removed.map(t=>t.id));db.transactions=db.transactions.filter(t=>!ids.has(t.id));save();res.json({ok:true,deleted:removed.length})});
+app.delete('/api/transactions/:id/permanent',(req,res)=>{const t=db.transactions.find(t=>t.id===req.params.id&&t.userId===user(req));
+ if(!t)return res.status(404).json({error:'记录不存在'});
+ if(t.status!=='cancelled')return res.status(409).json({error:'只能删除已取消交易，请先撤销该交易'});
+ db.transactions=db.transactions.filter(x=>x.id!==t.id);save();res.json({ok:true,id:t.id})});
 app.delete('/api/transactions/:id',(req,res)=>{const t=db.transactions.find(t=>t.id===req.params.id&&t.userId===user(req));if(!t)return res.status(404).json({error:'记录不存在'});
  if(t.status==='cancelled')return res.json(t);
  try{holdings(db.transactions.filter(x=>x.userId===user(req)&&x.id!==t.id),db.funds);t.status='cancelled';t.cancelledAt=new Date().toISOString();save();res.json(t)}catch(e){res.status(409).json({error:e.message})}});
