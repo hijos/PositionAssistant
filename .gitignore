@@ -1,0 +1,28 @@
+# 本地自带工具链与依赖（体积大，可重建）
+.tooling/
+node_modules/
+.npm-cache/
+.flutter-local/
+.flutter-appdata/
+
+# 环境变量与密钥
+.env
+.env.*
+!.env.example
+
+# 临时文件与截图
+/.tmp-valid.json
+/.tmp-invalid.json
+/tmpLongImage.jpg
+/tmpLongImage(1).jpg
+/IMG_1127.PNG
+/accounting-check.cjs
+/integrate.cjs
+/integration-check.cjs
+/update-server.cjs
+/client/android-f43-*.png
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+*.log

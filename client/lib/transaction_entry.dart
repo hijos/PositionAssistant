@@ -1,0 +1,455 @@
+import 'package:flutter/material.dart';
+
+import 'data/transaction_repository.dart';
+
+class TransactionEntryPage extends StatefulWidget {
+  const TransactionEntryPage({
+    required this.funds,
+    required this.repository,
+    this.initialType = 'buy',
+    super.key,
+  });
+  final List<Map<String, dynamic>> funds;
+  final TransactionRepository repository;
+  final String initialType;
+
+  @override
+  State<TransactionEntryPage> createState() => _TransactionEntryPageState();
+}
+
+class _TransactionEntryPageState extends State<TransactionEntryPage> {
+  late final TextEditingController value = TextEditingController(text: '100');
+  late final TextEditingController fee = TextEditingController(text: '0');
+  late final TextEditingController note = TextEditingController();
+  late final TextEditingController source = TextEditingController();
+  String? fundCode;
+  late String transactionType;
+  String entryMode = 'amount';
+  String feeMode = 'rate';
+  String cutoff = 'before';
+  late String date;
+  bool busy = false;
+  Map<String, dynamic>? previewResult;
+  String? error;
+  late final String clientRequestId =
+      'client-${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(this)}';
+
+  @override
+  void initState() {
+    super.initState();
+    transactionType = ['buy', 'sell'].contains(widget.initialType)
+        ? widget.initialType
+        : 'buy';
+    fundCode = widget.funds.isEmpty
+        ? null
+        : widget.funds.first['code'] as String;
+    final now = DateTime.now();
+    date =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  Map<String, dynamic>? get selectedFund {
+    for (final fund in widget.funds) {
+      if (fund['code'] == fundCode) return fund;
+    }
+    return null;
+  }
+
+  Map<String, dynamic> draft() {
+    final fund = selectedFund;
+    if (fund == null) throw const FormatException('请先选择基金');
+    return {
+      'fundCode': fund['code'],
+      'fundName': fund['name'],
+      'fundType': fund['type'],
+      'type': transactionType,
+      'entryMode': entryMode,
+      'amount': entryMode == 'amount' ? value.text.trim() : 0,
+      'shares': entryMode == 'shares' ? value.text.trim() : 0,
+      'feeMode': feeMode,
+      'feeRate': feeMode == 'rate' ? fee.text.trim() : 0,
+      'fixedFee': feeMode == 'fixed' ? fee.text.trim() : 0,
+      'date': date,
+      'cutoff': cutoff,
+      'note': note.text,
+      'source': source.text,
+      'clientRequestId': clientRequestId,
+    };
+  }
+
+  void changed() {
+    if (previewResult != null || error != null) {
+      setState(() {
+        previewResult = null;
+        error = null;
+      });
+    }
+  }
+
+  Future<void> preview() async {
+    setState(() {
+      busy = true;
+      error = null;
+      previewResult = null;
+    });
+    try {
+      final result = await widget.repository.preview(draft());
+      if (!mounted) return;
+      setState(() => previewResult = result);
+    } catch (e) {
+      if (!mounted) return;
+      setState(
+        () => error = e is FormatException ? e.message : '预览失败，请检查输入或网络',
+      );
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> save() async {
+    if (previewResult == null) {
+      await preview();
+      if (!mounted || previewResult == null) return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final result = await widget.repository.create(draft());
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['status'] == 'pending'
+                ? '${transactionType == 'buy' ? '买入' : '卖出'}已保存，等待净值确认'
+                : '${transactionType == 'buy' ? '买入' : '卖出'}已保存',
+          ),
+        ),
+      );
+      Navigator.of(context).pop(result);
+    } catch (e) {
+      if (!mounted) return;
+      setState(
+        () => error = e is FormatException ? e.message : '保存失败，请检查登录或网络后重试',
+      );
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Widget fieldLabel(String label, Widget child) => Padding(
+    padding: const EdgeInsets.only(top: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [Text(label), const SizedBox(height: 6), child],
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: Text('${transactionType == 'buy' ? '买入' : '卖出'}交易录入'),
+    ),
+    body: ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (widget.funds.isEmpty)
+          const TransactionSectionCard(
+            title: '暂无可用基金',
+            description: '请先在基金搜索与添加中添加基金，再录入交易。',
+          ),
+        if (widget.funds.isNotEmpty) ...[
+          DropdownButtonFormField<String>(
+            initialValue: fundCode,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: '基金',
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              for (final fund in widget.funds)
+                DropdownMenuItem(
+                  value: fund['code'] as String,
+                  child: Text(
+                    '${fund['name']} · ${fund['code']}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            onChanged: busy
+                ? null
+                : (value) {
+                    setState(() {
+                      fundCode = value;
+                      previewResult = null;
+                    });
+                  },
+          ),
+          fieldLabel(
+            '交易方向',
+            DropdownButtonFormField<String>(
+              initialValue: transactionType,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              items: const [
+                DropdownMenuItem(value: 'buy', child: Text('买入')),
+                DropdownMenuItem(value: 'sell', child: Text('卖出')),
+              ],
+              onChanged: busy
+                  ? null
+                  : (value) {
+                      if (value == null) return;
+                      setState(() {
+                        transactionType = value;
+                        previewResult = null;
+                      });
+                    },
+            ),
+          ),
+          fieldLabel(
+            '录入方式',
+            DropdownButtonFormField<String>(
+              initialValue: entryMode,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              items: const [
+                DropdownMenuItem(value: 'amount', child: Text('按金额录入')),
+                DropdownMenuItem(value: 'shares', child: Text('按份额录入')),
+              ],
+              onChanged: busy
+                  ? null
+                  : (value) {
+                      if (value == null) return;
+                      setState(() {
+                        entryMode = value;
+                        previewResult = null;
+                      });
+                    },
+            ),
+          ),
+          fieldLabel(
+            entryMode == 'amount'
+                ? '${transactionType == 'buy' ? '买入' : '卖出'}金额（${transactionType == 'sell' ? '扣费前' : '含手续费'}）'
+                : '${transactionType == 'buy' ? '买入' : '卖出'}份额',
+            TextField(
+              controller: value,
+              enabled: !busy,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              onChanged: (_) => changed(),
+            ),
+          ),
+          fieldLabel(
+            '手续费',
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    initialValue: feeMode,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'rate', child: Text('费率 %')),
+                      DropdownMenuItem(value: 'fixed', child: Text('固定费用 元')),
+                    ],
+                    onChanged: busy
+                        ? null
+                        : (value) {
+                            if (value == null) return;
+                            setState(() {
+                              feeMode = value;
+                              fee.text = '0';
+                              previewResult = null;
+                            });
+                          },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: fee,
+                    enabled: !busy,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      suffixText: feeMode == 'rate' ? '%' : '元',
+                    ),
+                    onChanged: (_) => changed(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          fieldLabel(
+            '实际操作日期',
+            OutlinedButton.icon(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.tryParse(date) ?? DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime.now(),
+                      );
+                      if (picked == null || !mounted) return;
+                      setState(() {
+                        date =
+                            '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                        previewResult = null;
+                      });
+                    },
+              icon: const Icon(Icons.calendar_today_outlined),
+              label: Text(date),
+            ),
+          ),
+          fieldLabel(
+            '15:00 前后',
+            DropdownButtonFormField<String>(
+              initialValue: cutoff,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              items: const [
+                DropdownMenuItem(value: 'before', child: Text('15:00 前')),
+                DropdownMenuItem(value: 'after', child: Text('15:00 后')),
+              ],
+              onChanged: busy
+                  ? null
+                  : (value) {
+                      if (value == null) return;
+                      setState(() {
+                        cutoff = value;
+                        previewResult = null;
+                      });
+                    },
+            ),
+          ),
+          fieldLabel(
+            '备注（可选）',
+            TextField(
+              controller: note,
+              enabled: !busy,
+              maxLength: 200,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              onChanged: (_) => changed(),
+            ),
+          ),
+          fieldLabel(
+            '来源（可选）',
+            TextField(
+              controller: source,
+              enabled: !busy,
+              maxLength: 100,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              onChanged: (_) => changed(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (error != null)
+            Text(
+              error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          if (previewResult != null) _PreviewCard(result: previewResult!),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: busy ? null : preview,
+                  child: Text(
+                    busy
+                        ? '处理中…'
+                        : '预览${transactionType == 'buy' ? '买入' : '卖出'}',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  onPressed: busy ? null : save,
+                  child: Text('保存${transactionType == 'buy' ? '买入' : '卖出'}'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    ),
+  );
+
+  @override
+  void dispose() {
+    value.dispose();
+    fee.dispose();
+    note.dispose();
+    source.dispose();
+    super.dispose();
+  }
+}
+
+class _PreviewCard extends StatelessWidget {
+  const _PreviewCard({required this.result});
+  final Map<String, dynamic> result;
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = result['status'] == 'pending';
+    final lines = <String>[
+      if (result['navDate'] != null) '净值日期：${result['navDate']}',
+      if (result['nav'] != null) '成交净值：${result['nav']}',
+      if (result['shares'] != null && result['shares'] != 0)
+        '预计份额：${result['shares']}',
+      if (result['amount'] != null && result['amount'] != 0)
+        '交易金额：${result['amount']}',
+      if (result['fee'] != null) '手续费：${result['fee']}',
+      if (pending) '待确认：${result['pendingReason'] ?? '正式净值尚未公布'}',
+    ];
+    return Card(
+      color: pending
+          ? Theme.of(context).colorScheme.surfaceContainerHighest
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${result['type'] == 'sell' ? '卖出' : '买入'}预览',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            for (final line in lines) Text(line),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class TransactionSectionCard extends StatelessWidget {
+  const TransactionSectionCard({
+    required this.title,
+    required this.description,
+    super.key,
+  });
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          Text(description, style: const TextStyle(height: 1.8)),
+        ],
+      ),
+    ),
+  );
+}

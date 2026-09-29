@@ -1,0 +1,18 @@
+{
+  "name": "position-assistant",
+  "private": true,
+  "scripts": {
+    "start": "node server/index.js",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.js",
+    "test:migrations": "node --test test/migrate.test.js",
+    "test:migrations:integration": "node --test test/migrate.integration.test.js",
+    "test:catalog": "node --test test/catalog.test.js",
+    "test:catalog:integration": "node --test test/catalog.integration.test.js",
+    "test:nav": "node --test test/nav.test.js",
+    "test:market": "node --test test/market.test.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.23.0"
+  }
+}
