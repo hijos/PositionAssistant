@@ -10,8 +10,27 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(const PositionAssistantApp());
-      expect(find.textContaining('正式收益'), findsOneWidget);
-      expect(find.textContaining('估算收益（参考）'), findsOneWidget);
+      // Local storage is Android-only, so this run renders the failure state of
+      // the holdings overview. It must still be a full-width card with the four
+      // labelled rows rather than a small square or a wall of plain text.
+      expect(find.byType(HoldingOverviewCard), findsOneWidget);
+      expect(find.text('持仓概览'), findsOneWidget);
+      expect(find.text('总市值'), findsOneWidget);
+      expect(find.text('总收益'), findsOneWidget);
+      expect(find.text('预估市值'), findsOneWidget);
+      expect(find.text('预估收益'), findsOneWidget);
+      expect(find.text('正式收益'), findsNothing);
+      expect(find.textContaining('正式市值'), findsNothing);
+      expect(tester.takeException(), isNull);
+      // The home tab must keep the fund-management card: it owns the only
+      // delete affordance for an added fund.
+      await tester.scrollUntilVisible(
+        find.text('已添加基金'),
+        160,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('已添加基金'), findsOneWidget);
+      expect(tester.takeException(), isNull);
       final sections = {
         '持仓': ['基金搜索与添加', '持仓详情'],
         '交易': ['交易录入', '交易详情'],

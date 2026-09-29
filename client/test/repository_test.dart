@@ -92,6 +92,49 @@ void main() {
   });
 
   test(
+    'remote holdings derive the estimated market value when the API omits it',
+    () async {
+      final holdings = RemoteHoldingRepository(
+        token: 'token',
+        client: MockClient(
+          (request) async => http.Response.bytes(
+            utf8.encode(
+              jsonEncode([
+                {
+                  'fundCode': '539001',
+                  'fundName': '建信纳斯达克100指数（QDII）A人民币',
+                  'shares': 310.96,
+                  'cost': 1050.0,
+                  'marketValue': 1093.74,
+                  'profit': 43.74,
+                  'profitRate': 0.041657,
+                  'estimatedProfit': 70.5,
+                },
+                {
+                  'fundCode': '000002',
+                  'shares': 10,
+                  'cost': 100.0,
+                  'marketValue': null,
+                  'profit': null,
+                  'estimatedProfit': null,
+                },
+              ]),
+            ),
+            200,
+          ),
+        ),
+      );
+      final items = await holdings.list();
+      // estimatedMarketValue = estimatedProfit + cost, while a missing
+      // estimate keeps producing `—` instead of a fabricated figure.
+      expect(items[0]['estimatedMarketValue'], 1120.5);
+      expect(items[0]['estimatedProfitRate'], closeTo(70.5 / 1050, 1e-12));
+      expect(items[1]['estimatedMarketValue'], isNull);
+      expect(items[1]['estimatedProfitRate'], isNull);
+    },
+  );
+
+  test(
     'local buy transactions validate and persist as pending records',
     () async {
       final transactions = LocalTransactionRepository(

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../format_values.dart';
 import 'fund_repository.dart';
 import 'repository.dart';
 
@@ -10,16 +11,9 @@ abstract interface class HoldingRepository {
   Future<void> close();
 }
 
-double _number(dynamic value) {
-  if (value is num) return value.toDouble();
-  return double.tryParse('$value') ?? 0;
-}
+double _number(dynamic value) => parseNumber(value);
 
-double? _optionalNumber(dynamic value) {
-  if (value == null) return null;
-  final parsed = value is num ? value.toDouble() : double.tryParse('$value');
-  return parsed != null && parsed.isFinite ? parsed : null;
-}
+double? _optionalNumber(dynamic value) => parseNumberOrNull(value);
 
 double _money(double value) =>
     (value.isFinite ? (value * 100).roundToDouble() / 100 : 0);
@@ -161,9 +155,36 @@ class RemoteHoldingRepository implements HoldingRepository {
     }
     final value = jsonDecode(response.body);
     if (value is! List) throw Exception('持仓响应无效');
-    return value.cast<Map<String, dynamic>>();
+    return value.cast<Map<String, dynamic>>().map(_completeEstimate).toList();
   }
 
   @override
   Future<void> close() async => client.close();
+}
+
+/// Fills in the estimate fields the client renders but an older `/api/holdings`
+/// response may omit.
+///
+/// The estimate is always `shares x estimatedNav - cost`, so the estimated
+/// market value can be recovered exactly as `estimatedProfit + cost`. Showing
+/// `—` for a genuinely missing estimate is preserved: nothing is derived unless
+/// `estimatedProfit` is present.
+Map<String, dynamic> _completeEstimate(Map<String, dynamic> item) {
+  final estimatedProfit = _optionalNumber(item['estimatedProfit']);
+  final cost = _optionalNumber(item['cost']);
+  final estimatedMarketValue =
+      _optionalNumber(item['estimatedMarketValue']) ??
+      (estimatedProfit == null || cost == null
+          ? null
+          : _money(estimatedProfit + cost));
+  final estimatedProfitRate =
+      _optionalNumber(item['estimatedProfitRate']) ??
+      (estimatedProfit == null || cost == null || cost == 0
+          ? null
+          : estimatedProfit / cost);
+  return {
+    ...item,
+    'estimatedMarketValue': estimatedMarketValue,
+    'estimatedProfitRate': estimatedProfitRate,
+  };
 }

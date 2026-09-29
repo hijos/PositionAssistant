@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'data/transaction_repository.dart';
+import 'format_values.dart';
 import 'transaction_history.dart';
 
 class HoldingSelectionPage extends StatelessWidget {
@@ -220,10 +221,7 @@ class _HoldingDetailPageState extends State<HoldingDetailPage> {
   }
 }
 
-double _number(dynamic value) =>
-    value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
-String _money(dynamic value) =>
-    value == null ? '—' : '¥${_number(value).toStringAsFixed(2)}';
-String _rate(dynamic value) =>
-    value == null ? '—' : '${(_number(value) * 100).toStringAsFixed(2)}%';
-String _shares(dynamic value) => _number(value).toStringAsFixed(2);
+double _number(dynamic value) => parseNumber(value);
+String _money(dynamic value) => formatMoney(value);
+String _rate(dynamic value) => formatRate(value);
+String _shares(dynamic value) => formatNumber(value);

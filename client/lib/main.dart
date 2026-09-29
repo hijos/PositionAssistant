@@ -1,3 +1,4 @@
+import 'format_values.dart';
 import 'fund_search.dart';
 import 'import_page.dart';
 import 'remote_login.dart';
@@ -47,9 +48,8 @@ class _HomeShellState extends State<HomeShell> {
   int selected = 0;
   bool localMode = !kIsWeb;
   Future<Repository>? localStorage;
-  late final LocalFundCatalogRepository localCatalog = LocalFundCatalogRepository(
-    () => localStorage ??= openLocalRepository(),
-  );
+  late final LocalFundCatalogRepository localCatalog =
+      LocalFundCatalogRepository(() => localStorage ??= openLocalRepository());
   late final LocalFundRepository localFunds = LocalFundRepository(
     () => localStorage ??= openLocalRepository(),
   );
@@ -149,9 +149,8 @@ class _HomeShellState extends State<HomeShell> {
           .showSnackBar(const SnackBar(content: Text('基金已删除')));
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('删除失败：$error')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('删除失败：$error')));
     }
   }
 
@@ -311,7 +310,10 @@ class _HomeShellState extends State<HomeShell> {
   Future<void> openPlans() async {
     if (!localMode || defaultTargetPlatform != TargetPlatform.android) return;
     await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => LocalPlansPage(open: () => localStorage ??= openLocalRepository())),
+      MaterialPageRoute(
+        builder: (_) =>
+            LocalPlansPage(open: () => localStorage ??= openLocalRepository()),
+      ),
     );
     if (mounted) setState(reloadFunds);
   }
@@ -319,21 +321,36 @@ class _HomeShellState extends State<HomeShell> {
   Future<void> openQuotas() async {
     if (!localMode || defaultTargetPlatform != TargetPlatform.android) return;
     await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => LocalQuotaPage(open: () => localStorage ??= openLocalRepository())),
+      MaterialPageRoute(
+        builder: (_) =>
+            LocalQuotaPage(open: () => localStorage ??= openLocalRepository()),
+      ),
     );
   }
 
   Future<void> exportLocal() async {
     if (!localMode || defaultTargetPlatform != TargetPlatform.android) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('远端导出请在登录后使用')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('远端导出请在登录后使用')));
+      }
       return;
     }
     try {
-      final json = await exportLocalJson(await (localStorage ??= openLocalRepository()));
-      final saved = await const MethodChannel('position_assistant/file_picker').invokeMethod<bool>('saveJsonFile', {'source': json});
-      if (mounted && saved == true) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('数据导出成功')));
+      final json = await exportLocalJson(
+        await (localStorage ??= openLocalRepository()),
+      );
+      final saved = await const MethodChannel('position_assistant/file_picker')
+          .invokeMethod<bool>('saveJsonFile', {'source': json});
+      if (mounted && saved == true) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('数据导出成功')));
+      }
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('导出失败：$error')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('导出失败：$error')));
+      }
     }
   }
 
@@ -347,26 +364,36 @@ class _HomeShellState extends State<HomeShell> {
     super.dispose();
   }
 
-  Widget fundList() => Card(
+  /// The funds the user has added, with the delete affordance. Kept separate
+  /// from [holdingsCard] because a fund can exist without any confirmed
+  /// transaction and therefore without a position.
+  Widget fundList(BuildContext context) => Card(
     child: Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('已添加基金'),
+          Text('已添加基金', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
           if (savedFunds == null)
-            TextButton(
-              onPressed: () => setState(reloadFunds),
-              child: Text(
-                !localMode && remoteFunds == null ? '请先登录远端账号' : '读取已添加基金',
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () => setState(reloadFunds),
+                child: Text(
+                  !localMode && remoteFunds == null ? '请先登录远端账号' : '读取已添加基金',
+                ),
               ),
-            ),
-          if (savedFunds != null)
+            )
+          else
             FutureBuilder<List<Map<String, dynamic>>>(
               future: savedFunds,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
-                  return const LinearProgressIndicator();
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: LinearProgressIndicator(),
+                  );
                 }
                 if (snapshot.hasError) {
                   return TextButton(
@@ -374,14 +401,19 @@ class _HomeShellState extends State<HomeShell> {
                     child: const Text('基金列表读取失败，点击重试'),
                   );
                 }
-                final funds = snapshot.data ?? [];
+                final funds = snapshot.data ?? const <Map<String, dynamic>>[];
+                if (funds.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text('尚未添加基金'),
+                  );
+                }
                 return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (funds.isEmpty) const Text('尚未添加基金'),
                     for (final fund in funds)
                       ListTile(
-                        title: Text(fund['name'] as String),
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('${fund['name'] ?? fund['code']}'),
                         subtitle: Text('${fund['code']} · ${fund['type']}'),
                         trailing: IconButton(
                           tooltip: '删除基金',
@@ -398,110 +430,137 @@ class _HomeShellState extends State<HomeShell> {
     ),
   );
 
-  String _money(dynamic value) =>
-      value == null ? '—' : '¥${_number(value).toStringAsFixed(2)}';
-  double _number(dynamic value) =>
-      value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
-  String _rate(dynamic value) =>
-      value == null ? '—' : '${(_number(value) * 100).toStringAsFixed(2)}%';
-  String _estimateLabel(Map<String, dynamic> item) {
-    final value = item['estimatedProfit'];
-    if (value == null) return item['estimateError']?.toString() ?? '暂无有效估算';
-    final source = item['estimateSource']?.toString();
-    final date = item['estimateAt']?.toString();
-    return '估算收益  ${_money(value)}${source == null ? '' : '\n来源：$source'}${date == null ? '' : '\n更新时间：$date'}';
-  }
-
   Widget holdingOverview() {
-    if (savedHoldings == null) {
-      return SectionCard(
-        title: '持仓概览',
-        description:
-            '正式市值  —\n正式收益  —\n正式收益率  —\n估算收益（参考）  —\n尚无数据，待确认交易不计入正式收益。',
+    final future = savedHoldings;
+    if (future == null) {
+      return const HoldingOverviewCard(
+        state: HoldingOverviewState.ready(HoldingOverviewData.empty),
       );
     }
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: savedHoldings,
+      future: future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const SectionCard(title: '持仓概览', description: '正在读取正式市值和收益…');
-        }
-        if (snapshot.hasError) {
-          return SectionCard(
-            title: '持仓概览',
-            description: '正式市值  —\n正式收益  —\n正式收益率  —\n持仓读取失败：${snapshot.error}',
+          return const HoldingOverviewCard(
+            state: HoldingOverviewState.loading(),
           );
         }
-        final holdings = snapshot.data ?? const <Map<String, dynamic>>[];
-        final valued =
-            holdings.isNotEmpty &&
-            holdings.every(
-              (item) => item['marketValue'] != null && item['profit'] != null,
-            );
-        final cost = holdings.fold<double>(
-          0,
-          (sum, item) => sum + _number(item['cost']),
-        );
-        final market = valued
-            ? holdings.fold<double>(
-                0,
-                (sum, item) => sum + _number(item['marketValue']),
-              )
-            : null;
-        final profit = valued
-            ? holdings.fold<double>(
-                0,
-                (sum, item) => sum + _number(item['profit']),
-              )
-            : null;
-        final rate = profit != null && cost > 0 ? profit / cost : null;
-        final estimated = holdings
-            .map((item) => item['estimatedProfit'])
-            .whereType<num>()
-            .fold<double>(0, (sum, value) => sum + value.toDouble());
-        return Column(
-          children: [
-            SectionCard(
-              title: '持仓概览',
-              description:
-                  '正式市值  ${_money(market)}\n正式收益  ${_money(profit)}\n正式收益率  ${_rate(rate)}\n估算收益（参考）  ${estimated == 0 ? '—' : _money(estimated)}',
-            ),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '当前持仓',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    if (holdings.isEmpty) const Text('暂无持仓'),
-                    for (final item in holdings)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          '${item['fundName'] ?? item['fundCode'] ?? '基金'}',
-                        ),
-                        subtitle: Text(
-                          '${item['fundCode'] ?? '—'} · ${_number(item['shares']).toStringAsFixed(2)} 份 · 成本 ${_money(item['cost'])}',
-                        ),
-                        trailing: Text(
-                          '${_money(item['marketValue'])}\n正式收益 ${_money(item['profit'])} (${_rate(item['profitRate'])})\n${_estimateLabel(item)}',
-                          textAlign: TextAlign.end,
-                        ),
-                        onTap: () => openHoldingDetail(item),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+        if (snapshot.hasError) {
+          return HoldingOverviewCard(
+            state: const HoldingOverviewState.error('持仓读取失败，请重试'),
+            onRetry: () => setState(reloadFunds),
+          );
+        }
+        return HoldingOverviewCard(
+          state: HoldingOverviewState.ready(
+            _overviewData(snapshot.data ?? const <Map<String, dynamic>>[]),
+          ),
+          onRetry: () => setState(reloadFunds),
         );
       },
     );
   }
+
+  /// Aggregates the per-fund holdings into the overview totals.
+  ///
+  /// Formal value and profit stay `null` unless every holding carries them, so
+  /// a missing official NAV never turns into a fake `0`. Rates are derived from
+  /// the summed profit over the summed cost instead of averaging per-fund rates.
+  HoldingOverviewData _overviewData(List<Map<String, dynamic>> holdings) {
+    double? sumWhere(bool Function() hasData, String field) => hasData()
+        ? holdings.fold<double>(
+            0,
+            (sum, item) => sum + parseNumber(item[field]),
+          )
+        : null;
+    final hasFormalValue =
+        holdings.isNotEmpty &&
+        holdings.every(
+          (item) => item['marketValue'] != null && item['profit'] != null,
+        );
+    final totalCost = holdings.fold<double>(
+      0,
+      (sum, item) => sum + parseNumber(item['cost']),
+    );
+    final totalMarketValue = sumWhere(() => hasFormalValue, 'marketValue');
+    final totalProfit = sumWhere(() => hasFormalValue, 'profit');
+    // "Estimated" follows the same rule but tolerates partial coverage: a fund
+    // whose estimate is unavailable simply does not contribute to the total.
+    final totalEstimatedMarketValue = sumWhere(
+      () => holdings.any((item) => item['estimatedMarketValue'] != null),
+      'estimatedMarketValue',
+    );
+    final totalEstimatedProfit = sumWhere(
+      () => holdings.any((item) => item['estimatedProfit'] != null),
+      'estimatedProfit',
+    );
+    double? rateOf(double? profit) =>
+        profit == null || totalCost <= 0 ? null : profit / totalCost;
+    return HoldingOverviewData(
+      totalMarketValue: totalMarketValue,
+      totalProfit: totalProfit,
+      totalProfitRate: rateOf(totalProfit),
+      totalEstimatedMarketValue: totalEstimatedMarketValue,
+      totalEstimatedProfit: totalEstimatedProfit,
+      totalEstimatedProfitRate: rateOf(totalEstimatedProfit),
+    );
+  }
+
+  /// The per-fund list. Each row is rendered by [HoldingListItem] so the
+  /// right-hand figures keep a stable width instead of being squeezed by a
+  /// [ListTile] trailing slot.
+  Widget holdingsCard(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('当前持仓', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          if (savedHoldings == null)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('正在读取…'),
+            )
+          else
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: savedHoldings,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: LinearProgressIndicator(),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return TextButton(
+                    onPressed: () => setState(reloadFunds),
+                    child: const Text('持仓读取失败，点击重试'),
+                  );
+                }
+                final holdings =
+                    snapshot.data ?? const <Map<String, dynamic>>[];
+                if (holdings.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text('暂无持仓'),
+                  );
+                }
+                return Column(
+                  children: [
+                    for (final item in holdings)
+                      HoldingListItem(
+                        item: item,
+                        onTap: () => openHoldingDetail(item),
+                      ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    ),
+  );
 
   static const titles = ['持仓', '交易', '定投', '额度', '设置'];
   static const icons = [
@@ -542,7 +601,8 @@ class _HomeShellState extends State<HomeShell> {
       case 0:
         return [
           holdingOverview(),
-          fundList(),
+          holdingsCard(context),
+          fundList(context),
           _entry(context, '基金搜索与添加'),
           _entry(context, '持仓详情'),
         ];
@@ -561,10 +621,10 @@ class _HomeShellState extends State<HomeShell> {
               description: snapshot.hasError
                   ? '定投计划读取失败'
                   : !snapshot.hasData
-                      ? '正在读取…'
-                      : snapshot.data!.isEmpty
-                          ? '暂无定投计划'
-                          : '已有 ${snapshot.data!.length} 个计划',
+                  ? '正在读取…'
+                  : snapshot.data!.isEmpty
+                  ? '暂无定投计划'
+                  : '已有 ${snapshot.data!.length} 个计划',
             ),
           ),
           _entry(context, '定投计划编辑'),
@@ -632,7 +692,8 @@ class _HomeShellState extends State<HomeShell> {
           ? openImport
           : title == '定投计划编辑' && defaultTargetPlatform == TargetPlatform.android
           ? openPlans
-          : title == '额度详情与手动修改' && defaultTargetPlatform == TargetPlatform.android
+          : title == '额度详情与手动修改' &&
+                defaultTargetPlatform == TargetPlatform.android
           ? openQuotas
           : title == '数据导出' && defaultTargetPlatform == TargetPlatform.android
           ? exportLocal
@@ -670,6 +731,312 @@ class SectionCard extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Aggregate totals shown by [HoldingOverviewCard].
+///
+/// Every field is nullable on purpose: `null` means "no data" and renders as
+/// `—`, while a real `0` from the ledger renders as `￥0.00`.
+class HoldingOverviewData {
+  const HoldingOverviewData({
+    required this.totalMarketValue,
+    required this.totalProfit,
+    required this.totalProfitRate,
+    required this.totalEstimatedMarketValue,
+    required this.totalEstimatedProfit,
+    required this.totalEstimatedProfitRate,
+  });
+
+  static const empty = HoldingOverviewData(
+    totalMarketValue: null,
+    totalProfit: null,
+    totalProfitRate: null,
+    totalEstimatedMarketValue: null,
+    totalEstimatedProfit: null,
+    totalEstimatedProfitRate: null,
+  );
+
+  final double? totalMarketValue;
+  final double? totalProfit;
+  final double? totalProfitRate;
+  final double? totalEstimatedMarketValue;
+  final double? totalEstimatedProfit;
+  final double? totalEstimatedProfitRate;
+}
+
+/// Rendering state of [HoldingOverviewCard].
+class HoldingOverviewState {
+  const HoldingOverviewState.loading()
+    : data = null,
+      errorMessage = null,
+      isLoading = true;
+
+  const HoldingOverviewState.error(this.errorMessage)
+    : data = null,
+      isLoading = false;
+
+  const HoldingOverviewState.ready(this.data)
+    : errorMessage = null,
+      isLoading = false;
+
+  final HoldingOverviewData? data;
+  final String? errorMessage;
+  final bool isLoading;
+}
+
+/// Full-width "持仓概览" card with four label/value rows.
+///
+/// It is a dedicated widget rather than a [SectionCard] because the figures
+/// must be right-aligned in a column of their own, which a single [Text] block
+/// cannot express.
+class HoldingOverviewCard extends StatelessWidget {
+  const HoldingOverviewCard({
+    required this.state,
+    this.onRetry,
+    this.onExplainEstimate,
+    super.key,
+  });
+
+  final HoldingOverviewState state;
+  final VoidCallback? onRetry;
+  final VoidCallback? onExplainEstimate;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = state.data;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('持仓概览', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 18),
+            if (state.isLoading) ...const [
+              Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+              SizedBox(height: 8),
+              Text('正在读取…'),
+            ] else if (state.errorMessage != null) ...[
+              Text(state.errorMessage!),
+              if (onRetry != null) ...[
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: onRetry,
+                    child: const Text('重试'),
+                  ),
+                ),
+              ],
+            ] else if (data != null) ...[
+              _OverviewRow(
+                label: '总市值',
+                value: formatMoney(data.totalMarketValue),
+              ),
+              _OverviewRow(
+                label: '总收益',
+                value: formatMoneyWithRate(
+                  data.totalProfit,
+                  data.totalProfitRate,
+                ),
+                color: profitColor(context, data.totalProfit),
+              ),
+              _OverviewRow(
+                label: '预估市值',
+                value: formatMoney(data.totalEstimatedMarketValue),
+              ),
+              _OverviewRow(
+                label: '预估收益',
+                value: formatMoneyWithRate(
+                  data.totalEstimatedProfit,
+                  data.totalEstimatedProfitRate,
+                ),
+                color: profitColor(context, data.totalEstimatedProfit),
+                trailing: IconButton(
+                  tooltip: '预估收益说明',
+                  icon: const Icon(Icons.info_outline),
+                  onPressed: () {
+                    final explain = onExplainEstimate;
+                    if (explain != null) {
+                      explain();
+                    } else {
+                      showEstimateExplanation(context);
+                    }
+                  },
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Explains where the estimated figures come from.
+///
+/// A dialog rather than a tooltip: tooltips are not discoverable on touch
+/// devices, and the icon must stay usable there.
+void showEstimateExplanation(BuildContext context) => showDialog<void>(
+  context: context,
+  builder: (context) => AlertDialog(
+    title: const Text('预估收益说明'),
+    content: const Text('根据美股最新数据估算'),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('知道了'),
+      ),
+    ],
+  ),
+);
+
+/// One label/value line of [HoldingOverviewCard].
+///
+/// The label keeps a fixed width so all four figures line up vertically.
+class _OverviewRow extends StatelessWidget {
+  const _OverviewRow({
+    required this.label,
+    required this.value,
+    this.color,
+    this.trailing,
+  });
+
+  final String label;
+  final String value;
+  final Color? color;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 76,
+          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ),
+        if (trailing != null) ...[const SizedBox(width: 6), trailing!],
+      ],
+    ),
+  );
+}
+
+/// One fund position inside the holdings list.
+///
+/// Left column: fund name, code with shares, cost. Right column: market value,
+/// profit with rate, estimated profit. The right column keeps a fixed width so
+/// the figures are never squeezed, and the name ellipsizes instead of wrapping.
+class HoldingListItem extends StatelessWidget {
+  const HoldingListItem({required this.item, required this.onTap, super.key});
+
+  final Map<String, dynamic> item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final rightWidth = MediaQuery.sizeOf(context).width < 380 ? 132.0 : 152.0;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${item['fundName'] ?? item['fundCode'] ?? '基金'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${item['fundCode'] ?? '—'}  ${formatNumber(item['shares'])}份',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '成本 ${formatMoney(item['cost'])}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: rightWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    formatMoney(item['marketValue']),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    formatMoneyWithRate(item['profit'], item['profitRate']),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: profitColor(context, item['profit']),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '预估 ${formatMoneyWithRate(item['estimatedProfit'], item['estimatedProfitRate'])}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class PlaceholderPage extends StatelessWidget {
