@@ -5,6 +5,7 @@ import 'data/fund_repository.dart';
 import 'data/fund_catalog_repository.dart';
 import 'data/holding_repository.dart';
 import 'data/local_repository.dart';
+import 'data/nav_repository.dart';
 import 'data/repository.dart';
 import 'data/transaction_repository.dart';
 import 'data/offline_repository.dart';
@@ -56,6 +57,7 @@ class _HomeShellState extends State<HomeShell> {
   LocalTransactionRepository? localTransactions;
   RemoteTransactionRepository? remoteTransactions;
   LocalHoldingRepository? localHoldings;
+  LocalNavRepository? localNav;
   RemoteHoldingRepository? remoteHoldings;
   Future<List<Map<String, dynamic>>>? savedFunds;
   Future<List<Map<String, dynamic>>>? savedHoldings;
@@ -67,6 +69,9 @@ class _HomeShellState extends State<HomeShell> {
   TransactionRepository? get currentTransactions => localMode
       ? localTransactions ??= LocalTransactionRepository(
           () => localStorage ??= openLocalRepository(),
+          nav: localNav ??= LocalNavRepository(
+            () => localStorage ??= openLocalRepository(),
+          ),
         )
       : remoteTransactions;
   HoldingRepository? get currentHoldings => localMode
@@ -86,12 +91,32 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   void reloadFunds() {
+    if (localMode) _refreshLocalNav();
     savedFunds = currentFunds?.list();
     savedFunds?.ignore();
     savedHoldings = currentHoldings?.list();
     savedHoldings?.ignore();
     savedPlans = localMode ? localPlans.list() : null;
     savedPlans?.ignore();
+  }
+
+  /// The holdings view derives formal market value and profit from the
+  /// fund-level official NAV, which otherwise only advances when a
+  /// transaction is confirmed. Refresh it so viewing holdings picks up the
+  /// latest published NAV. Failures keep the previous values.
+  void _refreshLocalNav() {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    final nav = localNav ??= LocalNavRepository(
+      () => localStorage ??= openLocalRepository(),
+    );
+    nav.refreshLatest().then((_) {
+      if (!mounted || !localMode) return;
+      setState(() {
+        savedFunds = localFunds.list()..ignore();
+        savedHoldings = currentHoldings?.list();
+        savedHoldings?.ignore();
+      });
+    }, onError: (_) {});
   }
 
   Future<void> removeFund(Map<String, dynamic> fund) async {

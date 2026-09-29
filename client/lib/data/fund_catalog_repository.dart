@@ -30,7 +30,15 @@ class LocalFundCatalogRepository {
   }
 
   Future<bool> refreshIfStale({Duration maxAge = const Duration(days: 1)}) async {
-    final repository = await open();
+    final Repository repository;
+    try {
+      repository = await open();
+    } catch (_) {
+      // Desktop preview and widget tests cannot open local storage; the
+      // catalog is optional there, so report "not refreshed" instead of
+      // throwing through the page lifecycle.
+      return false;
+    }
     final rows = await repository.list(fundCatalogCollection);
     final latest = rows
         .map((row) => DateTime.tryParse('${row['updatedAt'] ?? ''}'))

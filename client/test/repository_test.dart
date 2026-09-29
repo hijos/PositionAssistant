@@ -7,6 +7,9 @@ import 'package:position_assistant/data/transaction_repository.dart';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:position_assistant/data/nav_repository.dart';
 import 'package:position_assistant/data/sqlite_repository.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -90,7 +93,15 @@ void main() {
   test(
     'local buy transactions validate and persist as pending records',
     () async {
-      final transactions = LocalTransactionRepository(() async => repository);
+      final transactions = LocalTransactionRepository(
+        () async => repository,
+        // Offline NAV stub: keeps the created transaction pending instead of
+        // hitting the real eastmoney API during tests.
+        nav: LocalNavRepository(
+          () async => repository,
+          client: MockClient((request) async => http.Response('', 500)),
+        ),
+      );
       final saved = await transactions.create({
         'fundCode': '000001',
         'fundName': '测试基金A',
