@@ -1,0 +1,22 @@
+# 行尾策略：仓库内一律存 LF，检出也一律 LF，不随各人本机 core.autocrlf 变化。
+# 这样任何平台克隆结果一致，也不会再出现“LF will be replaced by CRLF”的往返转换警告。
+* text=auto eol=lf
+
+# Windows 脚本保持 CRLF：cmd.exe 解析 LF-only 批处理存在边角风险
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制：不做行尾转换，也不做文本合并
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.jar binary
+*.apk binary
+*.keystore binary
+*.jks binary
+*.sqlite binary
+*.sqlite3 binary
