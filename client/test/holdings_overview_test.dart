@@ -289,7 +289,60 @@ void main() {
     expect(valueSize, greaterThan(profitSize));
   });
 
-  testWidgets('profit and loss use different colors', (tester) async {
+  testWidgets('overview total is as large as a fund market value', (
+    tester,
+  ) async {
+    await pumpPageColumn(tester, [
+      const HoldingOverviewCard(state: overviewData),
+      HoldingListItem(item: holding(), onTap: () {}),
+    ], _k320);
+    final totalSize = tester
+        .widget<Text>(find.text(money('2106.56')))
+        .style!
+        .fontSize!;
+    final fundSize = tester
+        .widget<Text>(find.text(money('1093.74')))
+        .style!
+        .fontSize!;
+    expect(totalSize, fundSize);
+  });
+
+  testWidgets('estimate icon leads the label instead of trailing the row', (
+    tester,
+  ) async {
+    await pumpFullWidth(
+      tester,
+      const HoldingOverviewCard(state: overviewData),
+      _k320,
+    );
+    final icon = find.byIcon(Icons.info_outline);
+    final label = find.text('预估收益');
+    final value = find.text('${money('89.74')}（4.38%）');
+    expect(icon, findsOneWidget);
+    // Icon, then label, then the value: left to right in that order.
+    expect(tester.getTopLeft(icon).dx, lessThan(tester.getTopLeft(label).dx));
+    expect(tester.getTopLeft(label).dx, lessThan(tester.getTopLeft(value).dx));
+    // The icon is bounded to one touch target, so the 预估收益 label starts at
+    // most that far right of the other labels rather than drifting away.
+    final column = tester.getTopLeft(find.text('总市值')).dx;
+    final shift = tester.getTopLeft(label).dx - column;
+    expect(shift, greaterThanOrEqualTo(0));
+    expect(shift, lessThanOrEqualTo(kMinInteractiveDimension));
+    // The icon is still comfortably tappable at 320px width.
+    expect(tester.getSize(find.byType(IconButton)), const Size(48, 48));
+    // Nothing overflows: the long rate value still fits beside the label.
+    expect(
+      tester.getTopRight(value).dx,
+      lessThanOrEqualTo(
+        tester.getTopRight(find.byType(HoldingOverviewCard)).dx,
+      ),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('gains are red and losses green (CN market convention)', (
+    tester,
+  ) async {
     await pumpFullWidth(
       tester,
       Column(
@@ -321,9 +374,37 @@ void main() {
         .widget<Text>(find.text('${money('-100.00')}（-10.00%）'))
         .style!
         .color;
-    expect(gain, Colors.green.shade700);
-    expect(loss, Colors.red.shade700);
+    expect(gain, Colors.red.shade700);
+    expect(loss, Colors.green.shade700);
     expect(gain, isNot(loss));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('consecutive fund rows keep a tight vertical rhythm', (
+    tester,
+  ) async {
+    final first = holding(fundCode: '000001', fundName: '第一只基金');
+    final second = holding(fundCode: '000002', fundName: '第二只基金');
+    await pumpFullWidth(
+      tester,
+      Column(
+        children: [
+          HoldingListItem(item: first, onTap: () {}),
+          HoldingListItem(item: second, onTap: () {}),
+        ],
+      ),
+      _k320,
+    );
+    final rows = find.byType(HoldingListItem);
+    expect(rows, findsNWidgets(2));
+    // Rows sit back to back (each carries only 8px of its own padding), which
+    // is markedly denser than the previous 14px list-tile spacing.
+    final gap =
+        tester.getTopLeft(rows.at(1)).dy - tester.getBottomLeft(rows.at(0)).dy;
+    expect(gap, lessThanOrEqualTo(1));
+    // Height in the test font (Ahem line boxes are tall); what matters is that
+    // the rows touch instead of leaving a tile's worth of gap between them.
+    expect(tester.getSize(rows.at(0)).height, lessThan(94));
     expect(tester.takeException(), isNull);
   });
 

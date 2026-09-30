@@ -411,8 +411,11 @@ class _HomeShellState extends State<HomeShell> {
                 return Column(
                   children: [
                     for (final fund in funds)
+                      // Same dense rhythm as [HoldingListItem]: the rows sit
+                      // back to back instead of leaving a tile's worth of gap.
                       ListTile(
                         contentPadding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
                         title: Text('${fund['name'] ?? fund['code']}'),
                         subtitle: Text('${fund['code']} · ${fund['type']}'),
                         trailing: IconButton(
@@ -862,17 +865,26 @@ class HoldingOverviewCard extends StatelessWidget {
                   data.totalEstimatedProfitRate,
                 ),
                 color: profitColor(context, data.totalEstimatedProfit),
-                trailing: IconButton(
-                  tooltip: '预估收益说明',
-                  icon: const Icon(Icons.info_outline),
-                  onPressed: () {
-                    final explain = onExplainEstimate;
-                    if (explain != null) {
-                      explain();
-                    } else {
-                      showEstimateExplanation(context);
-                    }
-                  },
+                // The icon sits in front of the label so it reads as part of
+                // the "预估收益" field instead of floating at the far right
+                // edge next to the figure. Its box is pinned to one touch
+                // target so the label column stays predictable on 320px.
+                leading: SizedBox.square(
+                  dimension: kMinInteractiveDimension,
+                  child: IconButton(
+                    tooltip: '预估收益说明',
+                    padding: EdgeInsets.zero,
+                    iconSize: 18,
+                    icon: const Icon(Icons.info_outline),
+                    onPressed: () {
+                      final explain = onExplainEstimate;
+                      if (explain != null) {
+                        explain();
+                      } else {
+                        showEstimateExplanation(context);
+                      }
+                    },
+                  ),
                 ),
               ),
             ],
@@ -903,25 +915,28 @@ void showEstimateExplanation(BuildContext context) => showDialog<void>(
 
 /// One label/value line of [HoldingOverviewCard].
 ///
-/// The label keeps a fixed width so all four figures line up vertically.
+/// The label keeps a fixed width so all figures line up vertically, and the
+/// values use the same 18px semibold as the holdings list so the total market
+/// value never looks smaller than a single fund's market value.
 class _OverviewRow extends StatelessWidget {
   const _OverviewRow({
     required this.label,
     required this.value,
     this.color,
-    this.trailing,
+    this.leading,
   });
 
   final String label;
   final String value;
   final Color? color;
-  final Widget? trailing;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 5),
+    padding: const EdgeInsets.symmetric(vertical: 6),
     child: Row(
       children: [
+        ?leading,
         SizedBox(
           width: 76,
           child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
@@ -931,13 +946,12 @@ class _OverviewRow extends StatelessWidget {
             value,
             textAlign: TextAlign.right,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 18,
               fontWeight: FontWeight.w600,
               color: color,
             ),
           ),
         ),
-        if (trailing != null) ...[const SizedBox(width: 6), trailing!],
       ],
     ),
   );
@@ -960,7 +974,9 @@ class HoldingListItem extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        // Tight vertical rhythm: consecutive funds are separated by ~16px of
+        // white space instead of a full ListTile's worth.
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -974,14 +990,14 @@ class HoldingListItem extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     '${item['fundCode'] ?? '—'}  ${formatNumber(item['shares'])}份',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     '成本 ${formatMoney(item['cost'])}',
                     maxLines: 1,
@@ -1007,7 +1023,7 @@ class HoldingListItem extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     formatMoneyWithRate(item['profit'], item['profitRate']),
                     maxLines: 1,
@@ -1018,7 +1034,7 @@ class HoldingListItem extends StatelessWidget {
                       color: profitColor(context, item['profit']),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     '预估 ${formatMoneyWithRate(item['estimatedProfit'], item['estimatedProfitRate'])}',
                     maxLines: 1,

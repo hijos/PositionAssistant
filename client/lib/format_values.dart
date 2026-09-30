@@ -52,12 +52,15 @@ String formatMoneyWithRate(dynamic amount, dynamic rate) {
   return '${formatMoney(amount)}（${formatRate(rate)}）';
 }
 
-/// Positive returns use the project's success green, negative ones the red
-/// used elsewhere in the client, and flat/unknown values the plain text color.
+/// Gain color for this project: red for a rise, green for a fall, plain text
+/// for flat or unknown values.
+///
+/// This is the mainland-China market convention the user asked for, so do not
+/// "correct" it to the green-up convention used by western markets.
 Color profitColor(BuildContext context, dynamic value) {
   final number = parseNumberOrNull(value);
   if (number == null || number == 0) {
     return Theme.of(context).colorScheme.onSurface;
   }
-  return number > 0 ? Colors.green.shade700 : Colors.red.shade700;
+  return number > 0 ? Colors.red.shade700 : Colors.green.shade700;
 }
