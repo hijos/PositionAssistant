@@ -1085,12 +1085,11 @@ void showEstimateExplanation(BuildContext context) => showDialog<void>(
 
 /// One label/value line of [HoldingOverviewCard].
 ///
-/// The label keeps a fixed width so all figures line up vertically, and the
-/// values use the same 18px semibold as the holdings list so the total market
-/// value never looks smaller than a single fund's market value. [trailing] is
-/// a compact widget drawn right after the label text (the estimate info
-/// button); it never moves the label itself, so every row shares one label
-/// column whether or not it carries an icon.
+/// The label keeps a fixed width so all figures line up vertically. Both the
+/// label and value use 18px so the labels are clearly readable and match the
+/// size of the figures. [trailing] is a compact widget drawn right after the
+/// label text (the estimate info button); it never moves the label itself, so
+/// every row shares one label column whether or not it carries an icon.
 class _OverviewRow extends StatelessWidget {
   const _OverviewRow({
     required this.label,
@@ -1116,7 +1115,12 @@ class _OverviewRow extends StatelessWidget {
             width: 112,
             child: Row(
               children: [
-                Text(label, style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 18,
+                      ),
+                ),
                 if (trailing != null) ...[const SizedBox(width: 4), trailing],
               ],
             ),

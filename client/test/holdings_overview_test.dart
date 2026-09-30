@@ -311,6 +311,20 @@ void main() {
     expect(totalSize, fundSize);
   });
 
+  testWidgets('overview labels use 18px font size matching the figures', (
+    tester,
+  ) async {
+    await pumpFullWidth(
+      tester,
+      const HoldingOverviewCard(state: overviewData),
+      _k320,
+    );
+    for (final label in ['总市值', '总收益', '总成本', '预估市值', '预估收益']) {
+      final textWidget = tester.widget<Text>(find.text(label));
+      expect(textWidget.style?.fontSize, 18, reason: '$label fontSize');
+    }
+  });
+
   testWidgets('estimate icon follows the label without shifting it', (
     tester,
   ) async {
