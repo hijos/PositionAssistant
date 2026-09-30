@@ -865,26 +865,21 @@ class HoldingOverviewCard extends StatelessWidget {
                   data.totalEstimatedProfitRate,
                 ),
                 color: profitColor(context, data.totalEstimatedProfit),
-                // The icon sits in front of the label so it reads as part of
-                // the "预估收益" field instead of floating at the far right
-                // edge next to the figure. Its box is pinned to one touch
-                // target so the label column stays predictable on 320px.
-                leading: SizedBox.square(
-                  dimension: kMinInteractiveDimension,
-                  child: IconButton(
-                    tooltip: '预估收益说明',
-                    padding: EdgeInsets.zero,
-                    iconSize: 18,
-                    icon: const Icon(Icons.info_outline),
-                    onPressed: () {
-                      final explain = onExplainEstimate;
-                      if (explain != null) {
-                        explain();
-                      } else {
-                        showEstimateExplanation(context);
-                      }
-                    },
-                  ),
+                // Painted to the left of the label without taking part in the
+                // layout, so "预估收益" stays in the same column as "预估市值"
+                // above it while the icon still reads as part of this field.
+                leading: IconButton(
+                  tooltip: '预估收益说明',
+                  iconSize: 18,
+                  icon: const Icon(Icons.info_outline),
+                  onPressed: () {
+                    final explain = onExplainEstimate;
+                    if (explain != null) {
+                      explain();
+                    } else {
+                      showEstimateExplanation(context);
+                    }
+                  },
                 ),
               ),
             ],
@@ -913,6 +908,13 @@ void showEstimateExplanation(BuildContext context) => showDialog<void>(
   ),
 );
 
+/// Left slot reserved inside [_OverviewRow] for its leading icon.
+///
+/// The slot is narrower than the button it holds, so the icon is centred over
+/// the label's left edge and the button's own padding bleeds harmlessly past
+/// the row while the label keeps its column.
+const double _overviewIconSlot = 20;
+
 /// One label/value line of [HoldingOverviewCard].
 ///
 /// The label keeps a fixed width so all figures line up vertically, and the
@@ -932,29 +934,39 @@ class _OverviewRow extends StatelessWidget {
   final Widget? leading;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
-    child: Row(
-      children: [
-        ?leading,
-        SizedBox(
-          width: 76,
-          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: color,
+  Widget build(BuildContext context) {
+    final icon = leading;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          // A fixed slot, not the button's own width, so rows without an icon
+          // keep the label exactly where rows with one put it. The slot is
+          // part of the layout, which keeps the whole button hit-testable.
+          if (icon != null)
+            SizedBox(
+              width: _overviewIconSlot,
+              child: Center(child: icon),
+            ),
+          SizedBox(
+            width: 76,
+            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 /// One fund position inside the holdings list.

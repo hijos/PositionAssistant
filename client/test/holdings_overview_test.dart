@@ -307,7 +307,7 @@ void main() {
     expect(totalSize, fundSize);
   });
 
-  testWidgets('estimate icon leads the label instead of trailing the row', (
+  testWidgets('estimate icon sits before the label without shifting it', (
     tester,
   ) async {
     await pumpFullWidth(
@@ -322,21 +322,36 @@ void main() {
     // Icon, then label, then the value: left to right in that order.
     expect(tester.getTopLeft(icon).dx, lessThan(tester.getTopLeft(label).dx));
     expect(tester.getTopLeft(label).dx, lessThan(tester.getTopLeft(value).dx));
-    // The icon is bounded to one touch target, so the 预估收益 label starts at
-    // most that far right of the other labels rather than drifting away.
+    // The icon occupies one fixed slot, so the 预估收益 label is shifted by
+    // exactly that slot and the figures keep the same right edge as the rows
+    // above (their labels stay in the plain column).
     final column = tester.getTopLeft(find.text('总市值')).dx;
-    final shift = tester.getTopLeft(label).dx - column;
-    expect(shift, greaterThanOrEqualTo(0));
-    expect(shift, lessThanOrEqualTo(kMinInteractiveDimension));
-    // The icon is still comfortably tappable at 320px width.
-    expect(tester.getSize(find.byType(IconButton)), const Size(48, 48));
-    // Nothing overflows: the long rate value still fits beside the label.
+    for (final other in ['总收益', '预估市值']) {
+      expect(
+        tester.getTopLeft(find.text(other)).dx,
+        column,
+        reason: '$other must share the label column',
+      );
+    }
+    expect(tester.getTopLeft(label).dx, column + 20);
     expect(
       tester.getTopRight(value).dx,
-      lessThanOrEqualTo(
-        tester.getTopRight(find.byType(HoldingOverviewCard)).dx,
-      ),
+      tester.getTopRight(find.text(money('2140.20'))).dx,
     );
+    // The button keeps a full-height touch target; its width is bounded by the
+    // icon slot on purpose, which is what holds the label shift to 20px. The
+    // dialog test above proves it is still tappable at phone width.
+    final iconBox = tester.getRect(find.byType(IconButton));
+    expect(iconBox.height, greaterThanOrEqualTo(kMinInteractiveDimension));
+    expect(iconBox.width, 20);
+    final card = tester.getRect(find.byType(HoldingOverviewCard));
+    expect(tester.getRect(icon).left, greaterThan(card.left));
+    expect(
+      tester.getRect(icon).right,
+      lessThanOrEqualTo(tester.getTopLeft(label).dx),
+    );
+    // Nothing overflows: the long rate value still fits beside the label.
+    expect(tester.getTopRight(value).dx, lessThanOrEqualTo(card.right));
     expect(tester.takeException(), isNull);
   });
 
