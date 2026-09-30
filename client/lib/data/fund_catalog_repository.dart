@@ -88,13 +88,13 @@ class LocalFundCatalogRepository {
     List<Map<String, dynamic>> rows,
     String query,
   ) => rows
-      .where(_supported)
+      .where(supported)
       .where((item) => [item['code'], item['name'], item['shortName']]
           .any((value) => '$value'.toLowerCase().contains(query)))
       .toList()
     ..sort((a, b) => (a['code'] == query ? 0 : 1).compareTo(b['code'] == query ? 0 : 1));
 
-  static bool _supported(Map<String, dynamic> item) {
+  static bool supported(Map<String, dynamic> item) {
     final text = '${item['name']} ${item['type']}'.toUpperCase();
     if (RegExp(r'美元|美钞|美汇|港币|港元|欧元|英镑|日元|澳元|加元|新加坡元|瑞士法郎|外币|外汇|USD|HKD|EUR|GBP|JPY|AUD|CAD|SGD|CHF').hasMatch(text)) return false;
     if (RegExp(r'LOF|场内|交易型|封闭|REIT').hasMatch(text)) return false;

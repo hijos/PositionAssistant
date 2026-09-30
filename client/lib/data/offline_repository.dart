@@ -245,7 +245,7 @@ class LocalQuotaRepository {
 
 Future<String> exportLocalJson(Repository storage) async {
   final data = <String, List<Map<String, dynamic>>>{};
-  for (final collection in importCollections) {
+  for (final collection in [...importCollections, ...optionalImportCollections]) {
     data[collection] = await storage.list(collection);
   }
   return const JsonEncoder.withIndent('  ').convert({

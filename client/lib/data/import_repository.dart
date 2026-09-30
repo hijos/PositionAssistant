@@ -9,6 +9,7 @@ const importCollections = <String>[
   'planEntries',
   'quotaOverrides',
 ];
+const optionalImportCollections = <String>['quotas'];
 
 const importFormat = 'position-assistant.export';
 const importVersion = 1;
@@ -84,13 +85,31 @@ LocalImportPackage validateLocalImport(Map<String, dynamic> value) {
     }
     data[collection] = items;
   }
+  for (final collection in optionalImportCollections) {
+    final rawItems = rawData[collection];
+    if (rawItems == null) {
+      data[collection] = <Map<String, dynamic>>[];
+      continue;
+    }
+    if (rawItems is! List) throw FormatException('data.$collection 必须是数组');
+    final ids = <String>{};
+    data[collection] = rawItems.map((raw) {
+      if (raw is! Map) throw FormatException('data.$collection 必须是对象数组');
+      final item = Map<String, dynamic>.from(raw);
+      final id = _recordId(collection, item, -1);
+      if (!RegExp(r'^\d{6}$').hasMatch(id) || !ids.add(id)) {
+        throw FormatException('data.$collection 包含重复或无效基金代码');
+      }
+      return item;
+    }).toList();
+  }
 
   final counts = <String, int>{
-    for (final collection in importCollections)
+    for (final collection in [...importCollections, ...optionalImportCollections])
       collection: data[collection]!.length,
   };
   final fundCodes = <String>{};
-  for (final collection in importCollections) {
+  for (final collection in [...importCollections, ...optionalImportCollections]) {
     for (final item in data[collection]!) {
       final code = item['code'];
       final fundCode = item['fundCode'];
@@ -117,7 +136,7 @@ LocalImportPackage validateLocalImport(Map<String, dynamic> value) {
 }
 
 String _recordId(String collection, Map<String, dynamic> item, int index) {
-  final field = collection == 'funds' || collection == 'quotaOverrides'
+  final field = collection == 'funds' || collection == 'quotaOverrides' || collection == 'quotas'
       ? 'code'
       : 'id';
   final value = item[field];
@@ -145,7 +164,7 @@ Future<LocalImportSummary> importLocalPackage(
   LocalImportPackage package,
 ) async {
   return repository.transaction((session) async {
-    for (final collection in importCollections) {
+    for (final collection in [...importCollections, ...optionalImportCollections]) {
       final existing = await session.list(collection);
       for (final record in existing) {
         await session.delete(collection, _recordId(collection, record, -1));

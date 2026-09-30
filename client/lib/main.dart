@@ -13,6 +13,8 @@ import 'data/repository.dart';
 import 'data/transaction_repository.dart';
 import 'data/offline_repository.dart';
 import 'offline_pages.dart';
+import 'quota_page.dart';
+import 'data/quota_repository.dart';
 import 'holding_detail.dart';
 import 'transaction_entry.dart';
 import 'transaction_history.dart';
@@ -56,6 +58,10 @@ class _HomeShellState extends State<HomeShell> {
     () => localStorage ??= openLocalRepository(),
   );
   RemoteFundRepository? remoteFunds;
+  late final LocalAutomaticQuotaRepository localQuotas = LocalAutomaticQuotaRepository(
+    () => localStorage ??= openLocalRepository(),
+  );
+  RemoteQuotaRepository? remoteQuotas;
   LocalTransactionRepository? localTransactions;
   RemoteTransactionRepository? remoteTransactions;
   LocalHoldingRepository? localHoldings;
@@ -203,6 +209,8 @@ class _HomeShellState extends State<HomeShell> {
       remoteTransactions?.close();
       remoteHoldings?.close();
       remoteFunds = RemoteFundRepository(token: token);
+      remoteQuotas?.close();
+      remoteQuotas = RemoteQuotaRepository(token: token);
       remoteTransactions = RemoteTransactionRepository(token: token);
       remoteHoldings = RemoteHoldingRepository(token: token);
       reloadFunds();
@@ -216,6 +224,8 @@ class _HomeShellState extends State<HomeShell> {
     final oldHoldings = remoteHoldings;
     setState(() {
       remoteFunds = null;
+      remoteQuotas?.close();
+      remoteQuotas = null;
       remoteTransactions = null;
       remoteHoldings = null;
       if (!localMode) savedFunds = null;
@@ -651,7 +661,11 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) => Scaffold(
     appBar: _appBar(),
     body: SafeArea(
-      child: selected == 1
+      child: selected == 3
+          ? (localMode || remoteQuotas != null
+              ? QuotaPage(key: ValueKey(localMode ? 'local-quota' : remoteQuotas), repository: localMode ? localQuotas : remoteQuotas!)
+              : Center(child: FilledButton(onPressed: login, child: const Text('登录查看额度'))))
+          : selected == 1
           ? _transactionBody()
           : Center(
               child: ConstrainedBox(
