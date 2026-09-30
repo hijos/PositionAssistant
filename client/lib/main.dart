@@ -65,6 +65,14 @@ class _HomeShellState extends State<HomeShell> {
   late final LocalPlanRepository localPlans = LocalPlanRepository(
     () => localStorage ??= openLocalRepository(),
   );
+  // The transactions tab embeds the history page; the shell renders its
+  // cleanup action in the app bar (same slot as the watchlist tab's add
+  // button), forwards taps through this key, and mirrors the action's
+  // enabled/busy state from the notifier.
+  final _transactionHistoryKey = GlobalKey<TransactionHistoryPageState>();
+  final _transactionCleanup = ValueNotifier<TransactionCleanupState>(
+    (busy: false, hasCancelled: false),
+  );
   FundRepository? get currentFunds => localMode ? localFunds : remoteFunds;
   TransactionRepository? get currentTransactions => localMode
       ? localTransactions ??= LocalTransactionRepository(
@@ -359,6 +367,7 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   void dispose() {
+    _transactionCleanup.dispose();
     remoteFunds?.close();
     remoteTransactions?.close();
     remoteHoldings?.close();
@@ -609,7 +618,32 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: Text(selected == 1 ? '交易记录' : '持仓助手 · ${titles[selected]}'),
-      actions: selected == 2
+      actions: selected == 1 && (localMode || remoteTransactions != null)
+          ? [
+              ValueListenableBuilder<TransactionCleanupState>(
+                valueListenable: _transactionCleanup,
+                builder: (context, cleanup, _) => Semantics(
+                  button: true,
+                  label: '清理已取消交易',
+                  child: IconButton.filledTonal(
+                    onPressed: cleanup.busy || !cleanup.hasCancelled
+                        ? null
+                        : () => _transactionHistoryKey.currentState
+                              ?.clearCancelled(),
+                    tooltip: '清理已取消交易',
+                    icon: cleanup.busy
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.delete_sweep_outlined),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ]
+          : selected == 2
           ? [
               Semantics(
                 button: true,
@@ -675,7 +709,12 @@ class _HomeShellState extends State<HomeShell> {
         ),
       );
     }
-    return TransactionHistoryPage(repository: repository, embedded: true);
+    return TransactionHistoryPage(
+      key: _transactionHistoryKey,
+      repository: repository,
+      embedded: true,
+      cleanupState: _transactionCleanup,
+    );
   }
 
   List<Widget> _content(BuildContext context) {

@@ -42,10 +42,13 @@ void main() {
       expect(find.text('交易记录'), findsOneWidget);
       expect(find.text('交易录入'), findsNothing);
       expect(find.text('交易详情'), findsNothing);
+      // The cleanup action sits in the app bar, next to the 交易记录 title.
+      expect(find.byTooltip('清理已取消交易'), findsOneWidget);
 
       await tester.tap(find.text('自选').last);
       await tester.pumpAndSettle();
       expect(find.byTooltip('添加基金'), findsOneWidget);
+      expect(find.byTooltip('清理已取消交易'), findsNothing);
       expect(find.textContaining('已添加基金'), findsNothing);
       await tester.tap(find.byTooltip('添加基金'));
       await tester.pumpAndSettle();

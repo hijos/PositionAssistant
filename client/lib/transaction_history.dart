@@ -58,12 +58,17 @@ List<Map<String, dynamic>> sortTransactions(
   return sorted;
 }
 
+/// Rendering state of the 清理已取消交易 action, published by
+/// [TransactionHistoryPage] when a host renders the button outside the page.
+typedef TransactionCleanupState = ({bool busy, bool hasCancelled});
+
 class TransactionHistoryPage extends StatefulWidget {
   const TransactionHistoryPage({
     required this.repository,
     this.fundCode,
     this.pageTitle = '交易记录',
     this.embedded = false,
+    this.cleanupState,
     super.key,
   });
 
@@ -72,16 +77,32 @@ class TransactionHistoryPage extends StatefulWidget {
   final String pageTitle;
   final bool embedded;
 
+  /// When set, the embedded page leaves the cleanup button to its host (the
+  /// home shell shows it in the app bar, in the same slot as the watchlist
+  /// tab's add button) and publishes its enabled/busy state here.
+  final ValueNotifier<TransactionCleanupState>? cleanupState;
+
   @override
-  State<TransactionHistoryPage> createState() => _TransactionHistoryPageState();
+  State<TransactionHistoryPage> createState() => TransactionHistoryPageState();
 }
 
-class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
+class TransactionHistoryPageState extends State<TransactionHistoryPage> {
   late Future<List<Map<String, dynamic>>> records;
   List<Map<String, dynamic>> items = const [];
   bool loading = true;
   String? error;
   bool busy = false;
+
+  /// Every visual change below goes through setState, so this is the single
+  /// place that keeps an externally hosted cleanup button in sync.
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    final target = widget.cleanupState;
+    if (target == null) return;
+    final next = (busy: busy, hasCancelled: _cancelled.isNotEmpty);
+    if (target.value != next) target.value = next;
+  }
 
   @override
   void initState() {
@@ -288,6 +309,9 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
         body: body,
       );
     }
+    // With a host-provided notifier the cleanup action lives in the host's
+    // app bar; otherwise the embedded page keeps it in a row above the list.
+    if (widget.cleanupState != null) return body;
     return Column(
       children: [
         Padding(
