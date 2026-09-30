@@ -1144,122 +1144,177 @@ class _OverviewRow extends StatelessWidget {
 /// Left column: fund name, code with shares, cost. Right column: market value,
 /// profit with rate, estimated profit. The right column keeps a fixed width so
 /// the figures are never squeezed, and the name ellipsizes instead of wrapping.
-/// A watchlist row.
-///
-/// The row keeps no visible delete button so the list stays readable; removal
-/// lives behind a long press, which opens a sheet naming the fund before the
-/// destructive action is offered.
-class FundListTile extends StatelessWidget {
+/// A watchlist row with a revealable trailing delete button on left swipe.
+class FundListTile extends StatefulWidget {
   const FundListTile({required this.fund, required this.onRemove, super.key});
 
   final Map<String, dynamic> fund;
 
-  /// Runs after the user picks the destructive action in the sheet.
+  /// Runs after the user confirms deletion.
   final Future<void> Function(Map<String, dynamic> fund) onRemove;
 
-  Future<void> openActions(BuildContext context) async {
-    final errorColor = Theme.of(context).colorScheme.error;
-    final remove = await showModalBottomSheet<bool>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text('${fund['name'] ?? fund['code']}'),
-              subtitle: Text('${fund['code']} · ${fund['type']}'),
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.delete_outline, color: errorColor),
-              title: Text('删除基金', style: TextStyle(color: errorColor)),
-              onTap: () => Navigator.of(sheetContext).pop(true),
-            ),
-            ListTile(
-              leading: const Icon(Icons.close),
-              title: const Text('取消'),
-              onTap: () => Navigator.of(sheetContext).pop(false),
-            ),
-          ],
-        ),
-      ),
+  @override
+  State<FundListTile> createState() => _FundListTileState();
+}
+
+class _FundListTileState extends State<FundListTile>
+    with SingleTickerProviderStateMixin {
+  static const double _actionWidth = 72;
+  late final AnimationController _controller;
+  double _dragExtent = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
     );
-    if (remove == true) await onRemove(fund);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _open() => _controller.animateTo(1.0, curve: Curves.easeOut);
+  void _close() => _controller.animateTo(0.0, curve: Curves.easeOut);
+
+  void _handleHorizontalDragUpdate(DragUpdateDetails details) {
+    _dragExtent -= details.primaryDelta ?? 0;
+    _dragExtent = _dragExtent.clamp(0.0, _actionWidth);
+    _controller.value = _dragExtent / _actionWidth;
+  }
+
+  void _handleHorizontalDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity < -300) {
+      _open();
+    } else if (velocity > 300) {
+      _close();
+    } else if (_controller.value > 0.5) {
+      _open();
+    } else {
+      _close();
+    }
+    _dragExtent = 0;
+  }
+
+  Future<void> _handleDelete() async {
+    _close();
+    await widget.onRemove(widget.fund);
   }
 
   @override
   Widget build(BuildContext context) {
+    final fund = widget.fund;
     final dailyChange = parseNumberOrNull(fund['dailyChange']);
     final name = '${fund['name'] ?? fund['code']}';
     final code = '${fund['code'] ?? '—'}';
-    return Dismissible(
-      key: ValueKey('watchlist-$code'),
-      direction: DismissDirection.endToStart,
-      confirmDismiss: (_) async {
-        await openActions(context);
-        return false;
-      },
-      background: Align(
-        alignment: Alignment.centerRight,
-        child: Container(
-          width: 72,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.error,
-            borderRadius: BorderRadius.circular(8),
+    final errorColor = Theme.of(context).colorScheme.error;
+    final onErrorColor = Theme.of(context).colorScheme.onError;
+
+    return GestureDetector(
+      onHorizontalDragUpdate: _handleHorizontalDragUpdate,
+      onHorizontalDragEnd: _handleHorizontalDragEnd,
+      child: Stack(
+        children: [
+          // Behind layer: red delete button pinned to the right edge.
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: _actionWidth,
+                child: Semantics(
+                  button: true,
+                  label: '删除 $name',
+                  child: InkWell(
+                    onTap: _handleDelete,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: errorColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.delete_outline, color: onErrorColor, size: 20),
+                          const SizedBox(height: 2),
+                          Text(
+                            '删除',
+                            style: TextStyle(
+                              color: onErrorColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-          alignment: Alignment.center,
-          child: Icon(
-            Icons.delete_outline,
-            color: Theme.of(context).colorScheme.onError,
-          ),
-        ),
-      ),
-      child: Container(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
+          // Foreground layer: slides to the left by at most _actionWidth.
+          AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) => Transform.translate(
+              offset: Offset(-_controller.value * _actionWidth, 0),
+              child: child,
+            ),
+            child: Container(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      code,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontSize: 11,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
+                          const SizedBox(height: 4),
+                          Text(
+                            code,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  fontSize: 11,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        dailyChange == null
+                            ? '—'
+                            : '${dailyChange >= 0 ? '+' : ''}${dailyChange.toStringAsFixed(2)}%',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: profitColor(context, dailyChange),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  dailyChange == null
-                      ? '—'
-                      : '${dailyChange >= 0 ? '+' : ''}${dailyChange.toStringAsFixed(2)}%',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: profitColor(context, dailyChange),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -31,7 +31,7 @@ void main() {
     expect(find.text('018043'), findsOneWidget);
     expect(find.text('指数型-海外股票'), findsNothing);
     expect(find.text('—'), findsOneWidget);
-    expect(find.byIcon(Icons.delete_outline), findsNothing);
+    // behind background layer
     expect(find.byType(IconButton), findsNothing);
   });
 
@@ -51,36 +51,21 @@ void main() {
   });
 
   testWidgets(
-    'swiping left opens the delete sheet and cancelling keeps the fund',
+    'swiping left reveals the delete button and tapping it calls onRemove',
     (tester) async {
       final removed = <Map<String, dynamic>>[];
       await pumpRow(tester, removed);
 
       await tester.fling(find.text('天弘纳斯达克100指数发起(QDII)A'), const Offset(-500, 0), 1000);
       await tester.pumpAndSettle();
-      expect(find.text('删除基金'), findsOneWidget);
-      expect(find.text('取消'), findsOneWidget);
+      expect(find.text('删除'), findsOneWidget);
 
-      await tester.tap(find.text('取消'));
+      await tester.tap(find.text('删除'));
       await tester.pumpAndSettle();
-      expect(find.text('删除基金'), findsNothing);
-      expect(removed, isEmpty);
+
+      expect(removed, [fund]);
     },
   );
-
-  testWidgets('picking the sheet action removes the swiped fund', (
-    tester,
-  ) async {
-    final removed = <Map<String, dynamic>>[];
-    await pumpRow(tester, removed);
-
-    await tester.fling(find.byType(FundListTile), const Offset(-500, 0), 1000);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('删除基金'));
-    await tester.pumpAndSettle();
-
-    expect(removed, [fund]);
-  });
 
   testWidgets('a plain tap never removes the fund', (tester) async {
     final removed = <Map<String, dynamic>>[];
