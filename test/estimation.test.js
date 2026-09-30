@@ -20,4 +20,5 @@ test('selects VOO for S&P 500 funds and QQQ otherwise',()=>{
  assert.equal(proxySymbol('标普500指数基金'), 'VOO');
  assert.equal(proxySymbol('S&P 500 ETF'), 'VOO');
  assert.equal(proxySymbol('纳斯达克100指数'), 'QQQ');
+ assert.equal(proxySymbol('全球科技基金'), null);
 });

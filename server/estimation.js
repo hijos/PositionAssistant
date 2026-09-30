@@ -13,7 +13,9 @@ async function chart(symbol,baseDate){
 function weightedReturn(qqq,fx){return qqq.ratio*fx.ratio-1}
 function proxySymbol(name=''){
  const text=String(name).toUpperCase().replace(/[\s-]/g,'');
- return text.includes('标普')||text.includes('S&P')||text.includes('SP500')||text.includes('标普500')?'VOO':'QQQ';
+ if(text.includes('标普')||text.includes('S&P')||text.includes('SP500')||text.includes('标普500'))return 'VOO';
+ if(text.includes('纳斯达克')||text.includes('NASDAQ')||text.includes('NAS100')||text.includes('NDX'))return 'QQQ';
+ return null;
 }
 function normalizeInputs({code,nav,navDate,qqq,fx,ruleVersion=ESTIMATION_RULE_VERSION}){
  if(ruleVersion!==ESTIMATION_RULE_VERSION)throw Error('不支持的估算规则版本');
@@ -26,7 +28,8 @@ function estimateFromInputs(input){
  return {estimatedNav:Math.round(x.nav*(1+rate)*1e6)/1e6,estimateRuleVersion:x.ruleVersion,estimateCoverage:1,holdingsDate:null,estimateBaseDate:x.navDate,estimateMethod:'按 QQQ + USD/CNY 组合涨跌估算（100%）；不含费用、分红与调仓'};
 }
 async function estimateUnderlying(code,nav,navDate,fundName=''){
- const symbol=proxySymbol(fundName); const sourceUrl='https://finance.yahoo.com/quote/'+symbol+'/';
+ const symbol=proxySymbol(fundName); if(!symbol)throw Error('暂不支持该基金的代理估算');
+ const sourceUrl='https://finance.yahoo.com/quote/'+symbol+'/';
  const [qqq,fx]=await Promise.all([chart(symbol,navDate),chart('CNY=X',navDate)]);
  const common=qqq.points.map(p=>p.date).filter(d=>d>navDate&&fx.points.some(q=>q.date===d)).sort().at(-1);
  if(!common)throw Error('缺少同日 QQQ 与汇率行情');

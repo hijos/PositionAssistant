@@ -135,6 +135,7 @@ class LocalNavRepository {
   ) async {
     try {
       final symbol = _proxySymbol(fund);
+      if (symbol == null) return const {};
       final qqq = await _fetchYahooQuote(symbol, navDate);
       final fx = await _fetchYahooQuote('CNY=X', navDate);
       final dates = qqq.keys
@@ -161,14 +162,21 @@ class LocalNavRepository {
     }
   }
 
-  String _proxySymbol(Map<String, dynamic> fund) {
+  String? _proxySymbol(Map<String, dynamic> fund) {
     final text = '${fund['name'] ?? ''} ${fund['type'] ?? ''}'.toUpperCase();
-    return text.contains('标普') ||
-            text.contains('S&P') ||
-            text.contains('SP500') ||
-            text.contains('标普500')
-        ? 'VOO'
-        : 'QQQ';
+    if (text.contains('标普') ||
+        text.contains('S&P') ||
+        text.contains('SP500') ||
+        text.contains('标普500')) {
+      return 'VOO';
+    }
+    if (text.contains('纳斯达克') ||
+        text.contains('NASDAQ') ||
+        text.contains('NAS100') ||
+        text.contains('NDX')) {
+      return 'QQQ';
+    }
+    return null;
   }
 
   Future<Map<String, double>> _fetchYahooQuote(
