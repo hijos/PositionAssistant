@@ -16,7 +16,7 @@ async function fetchNav(code){
  const old=db.funds.find(f=>f.code===code)||{};const x=estimate.status==='fulfilled'?estimate.value:null;
  const n=official.status==='fulfilled'?official.value[0]:null;
  if(!n)throw Error('正式净值暂时无法更新');
- let underlying=null,estimateError=null;try{underlying=await estimateUnderlying(code,n.nav,n.navDate)}catch(e){estimateError=e.message}
+ let underlying=null,estimateError=null;try{underlying=await estimateUnderlying(code,n.nav,n.navDate,old.name||x?.name||'')}catch(e){estimateError=e.message}
  return {...n,code,name:old.name||(db.fundCatalog||[]).find(f=>f.code===code)?.name||x?.name||code,source:'东方财富历史净值',sourceType:'official',sourceError:null,updatedAt:new Date().toISOString(),estimatedNav:x?.jzrq===n.navDate&&Number(x.gsz)>0?Number(x.gsz):null,estimateAt:x?.gztime?.replace(' ','T')||null,estimateSource:'东方财富第三方估值（非底层持仓自算）',estimateError,...underlying};
 }
 function validateTrade(b){
@@ -209,7 +209,6 @@ app.get('/api/export',(req,res)=>{const ownerId=user(req);if(!ownerId)return res
 app.post('/api/import/preview',(req,res)=>{if(!user(req))return res.status(401).json({error:'需要登录'});try{const summary=summarizeImportPackage(req.body);res.json({valid:true,format:summary.format,version:summary.version,exportedAt:summary.exportedAt,summary});}catch(e){res.status(400).json({valid:false,error:e.message})}});
 app.post('/api/import',(req,res)=>{const ownerId=user(req);if(!ownerId)return res.status(401).json({error:'需要登录'});try{const next=replaceAccountData(db,ownerId,req.body);fs.writeFileSync(dbPath,JSON.stringify(next,null,2));db=next;res.json({ok:true,summary:summarizeImportPackage(req.body)});}catch(e){res.status(400).json({ok:false,error:e.message})}});
 app.use(express.static(path.join(__dirname,'../web')));if(require.main===module)app.listen(process.env.PORT||3000,()=>console.log('PositionAssistant listening')); module.exports={app,validateTrade,validatePlan,settle,history,confirmPending,exportPackage,summarizeImportPackage};
-
 
 
 

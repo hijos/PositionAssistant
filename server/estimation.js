@@ -11,6 +11,10 @@ async function chart(symbol,baseDate){
  return {ratio:last.price/base.price,date:last.date,at:last.at,points,base:base.price};
 }
 function weightedReturn(qqq,fx){return qqq.ratio*fx.ratio-1}
+function proxySymbol(name=''){
+ const text=String(name).toUpperCase().replace(/[\s-]/g,'');
+ return text.includes('标普')||text.includes('S&P')||text.includes('SP500')||text.includes('标普500')?'VOO':'QQQ';
+}
 function normalizeInputs({code,nav,navDate,qqq,fx,ruleVersion=ESTIMATION_RULE_VERSION}){
  if(ruleVersion!==ESTIMATION_RULE_VERSION)throw Error('不支持的估算规则版本');
  if(!/^\d{6}$/.test(String(code))||!(Number(nav)>0)||!/^(\d{4})-(\d{2})-(\d{2})$/.test(String(navDate)))throw Error('估算输入无效');
@@ -21,14 +25,14 @@ function estimateFromInputs(input){
  const x=normalizeInputs(input); const rate=weightedReturn(x.qqq,x.fx);
  return {estimatedNav:Math.round(x.nav*(1+rate)*1e6)/1e6,estimateRuleVersion:x.ruleVersion,estimateCoverage:1,holdingsDate:null,estimateBaseDate:x.navDate,estimateMethod:'按 QQQ + USD/CNY 组合涨跌估算（100%）；不含费用、分红与调仓'};
 }
-async function estimateUnderlying(code,nav,navDate){
- const sourceUrl='https://finance.yahoo.com/quote/QQQ/';
- const [qqq,fx]=await Promise.all([chart('QQQ',navDate),chart('CNY=X',navDate)]);
+async function estimateUnderlying(code,nav,navDate,fundName=''){
+ const symbol=proxySymbol(fundName); const sourceUrl='https://finance.yahoo.com/quote/'+symbol+'/';
+ const [qqq,fx]=await Promise.all([chart(symbol,navDate),chart('CNY=X',navDate)]);
  const common=qqq.points.map(p=>p.date).filter(d=>d>navDate&&fx.points.some(q=>q.date===d)).sort().at(-1);
  if(!common)throw Error('缺少同日 QQQ 与汇率行情');
  for(const q of [qqq,fx]){const p=q.points.find(p=>p.date===common);q.ratio=p.price/q.base;q.date=common;q.at=p.at;}
- return {...estimateFromInputs({code,nav,navDate,qqq,fx}),estimateAt:new Date(Math.min(qqq.at,fx.at)).toISOString(),estimateSource:'QQQ + USD/CNY（Yahoo Finance，100%代理）',estimateSourceUrl:sourceUrl};
+ return {...estimateFromInputs({code,nav,navDate,qqq,fx}),estimateAt:new Date(Math.min(qqq.at,fx.at)).toISOString(),estimateSource:symbol+' + USD/CNY（Yahoo Finance，100%代理）',estimateSourceUrl:sourceUrl};
 }
-module.exports={ESTIMATION_RULE_VERSION,weightedReturn,normalizeInputs,estimateFromInputs,estimateUnderlying};
+module.exports={ESTIMATION_RULE_VERSION,proxySymbol,weightedReturn,normalizeInputs,estimateFromInputs,estimateUnderlying};
 
 

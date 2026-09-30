@@ -119,20 +119,23 @@ class LocalNavRepository {
         if (snapshot['dailyChange'] != null)
           'dailyChange': snapshot['dailyChange'],
         'navSource': snapshot['source'] ?? 'local-nav-cache',
-        ...await _estimateFromQqq(
+        ...await _estimateFromProxy(
           snapshot['nav'] as num,
           snapshot['navDate'] as String,
+          current,
         ),
       });
     }
   }
 
-  Future<Map<String, dynamic>> _estimateFromQqq(
+  Future<Map<String, dynamic>> _estimateFromProxy(
     num nav,
     String navDate,
+    Map<String, dynamic> fund,
   ) async {
     try {
-      final qqq = await _fetchYahooQuote('QQQ', navDate);
+      final symbol = _proxySymbol(fund);
+      final qqq = await _fetchYahooQuote(symbol, navDate);
       final fx = await _fetchYahooQuote('CNY=X', navDate);
       final dates = qqq.keys
           .where((date) => date.compareTo(navDate) > 0 && fx.containsKey(date))
@@ -147,7 +150,7 @@ class LocalNavRepository {
       return {
         'estimatedNav': estimatedNav,
         'estimateAt': '${date}T23:59:59.000Z',
-        'estimateSource': 'QQQ + USD/CNY（Yahoo Finance，100%代理）',
+        'estimateSource': '$symbol + USD/CNY（Yahoo Finance，100%代理）',
         'estimateCoverage': 1.0,
         'estimateRuleVersion': 'qqq-fx-v1',
         'estimateBaseDate': navDate,
@@ -156,6 +159,16 @@ class LocalNavRepository {
     } catch (_) {
       return const {};
     }
+  }
+
+  String _proxySymbol(Map<String, dynamic> fund) {
+    final text = '${fund['name'] ?? ''} ${fund['type'] ?? ''}'.toUpperCase();
+    return text.contains('标普') ||
+            text.contains('S&P') ||
+            text.contains('SP500') ||
+            text.contains('标普500')
+        ? 'VOO'
+        : 'QQQ';
   }
 
   Future<Map<String, double>> _fetchYahooQuote(
