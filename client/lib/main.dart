@@ -693,6 +693,7 @@ class _HomeShellState extends State<HomeShell> {
       selectedIndex: selected,
       onDestinationSelected: (value) {
         setState(() => selected = value);
+        if (value == 0 && localMode) _refreshLocalNav();
         if (value == 1) unawaited(_confirmPendingTransactions());
       },
       destinations: [
