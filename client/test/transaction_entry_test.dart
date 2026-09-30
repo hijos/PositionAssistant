@@ -166,7 +166,7 @@ void main() {
         home: TransactionEntryPage(funds: [fund], repository: repo),
       ),
     );
-    expect(find.text('买入交易录入'), findsOneWidget);
+    expect(find.text('交易录入'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('预览买入'),
       300,
@@ -221,7 +221,7 @@ void main() {
         ),
       ),
     );
-    expect(find.text('卖出交易录入'), findsOneWidget);
+    expect(find.text('交易录入'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('保存卖出'),
       300,

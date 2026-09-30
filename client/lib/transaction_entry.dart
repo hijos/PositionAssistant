@@ -162,18 +162,10 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
     }
   }
 
-  Widget fieldLabel(String label, Widget child) => Padding(
-    padding: const EdgeInsets.only(top: 12),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [Text(label), const SizedBox(height: 6), child],
-    ),
-  );
-
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: Text('${transactionType == 'buy' ? '买入' : '卖出'}交易录入'),
+      title: const Text('交易录入'),
     ),
     body: ListView(
       padding: const EdgeInsets.all(16),
@@ -192,209 +184,337 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
             label: const Text('搜索基金并添加到自选列表'),
           ),
         if (funds.isNotEmpty) ...[
-          DropdownButtonFormField<String>(
-            initialValue: fundCode,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: '基金',
-              border: OutlineInputBorder(),
-            ),
-            items: [
-              for (final fund in funds)
-                DropdownMenuItem(
-                  value: fund['code'] as String,
-                  child: Text(
-                    '${fund['name']} · ${fund['code']}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '交易方向',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
-                ),
-            ],
-            onChanged: busy
-                ? null
-                : (value) {
-                    setState(() {
-                      fundCode = value;
-                      previewResult = null;
-                    });
-                  },
-          ),
-          if (widget.onSearchAndAdd != null && transactionType == 'buy') ...[
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: busy ? null : searchAndAddFund,
-              icon: const Icon(Icons.search),
-              label: const Text('搜索基金并添加到自选列表'),
-            ),
-          ],
-          fieldLabel(
-            '交易方向',
-            DropdownButtonFormField<String>(
-              initialValue: transactionType,
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-              items: const [
-                DropdownMenuItem(value: 'buy', child: Text('买入')),
-                DropdownMenuItem(value: 'sell', child: Text('卖出')),
-              ],
-              onChanged: busy
-                  ? null
-                  : (value) {
-                      if (value == null) return;
-                      setState(() {
-                        transactionType = value;
-                        previewResult = null;
-                      });
-                    },
-            ),
-          ),
-          fieldLabel(
-            '录入方式',
-            DropdownButtonFormField<String>(
-              initialValue: entryMode,
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-              items: const [
-                DropdownMenuItem(value: 'amount', child: Text('按金额录入')),
-                DropdownMenuItem(value: 'shares', child: Text('按份额录入')),
-              ],
-              onChanged: busy
-                  ? null
-                  : (value) {
-                      if (value == null) return;
-                      setState(() {
-                        entryMode = value;
-                        previewResult = null;
-                      });
-                    },
-            ),
-          ),
-          fieldLabel(
-            entryMode == 'amount'
-                ? '${transactionType == 'buy' ? '买入' : '卖出'}金额（${transactionType == 'sell' ? '扣费前' : '含手续费'}）'
-                : '${transactionType == 'buy' ? '买入' : '卖出'}份额',
-            TextField(
-              controller: value,
-              enabled: !busy,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-              onChanged: (_) => changed(),
-            ),
-          ),
-          fieldLabel(
-            '手续费',
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: feeMode,
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment<String>(
+                          value: 'buy',
+                          label: Text('买入'),
+                          icon: Icon(Icons.add_circle_outline, size: 18),
+                        ),
+                        ButtonSegment<String>(
+                          value: 'sell',
+                          label: Text('卖出'),
+                          icon: Icon(Icons.remove_circle_outline, size: 18),
+                        ),
+                      ],
+                      selected: {transactionType},
+                      onSelectionChanged: busy
+                          ? null
+                          : (selection) {
+                              setState(() {
+                                transactionType = selection.first;
+                                previewResult = null;
+                              });
+                            },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '交易基金',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    initialValue: fundCode,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                    items: [
+                      for (final fund in funds)
+                        DropdownMenuItem(
+                          value: fund['code'] as String,
+                          child: Text(
+                            '${fund['name']} · ${fund['code']}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: busy
+                        ? null
+                        : (value) {
+                            setState(() {
+                              fundCode = value;
+                              previewResult = null;
+                            });
+                          },
+                  ),
+                  if (widget.onSearchAndAdd != null && transactionType == 'buy') ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: busy ? null : searchAndAddFund,
+                        icon: const Icon(Icons.search, size: 16),
+                        label: const Text('搜索基金并添加到自选列表'),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  Text(
+                    '录入方式',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    initialValue: entryMode,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'rate', child: Text('费率 %')),
-                      DropdownMenuItem(value: 'fixed', child: Text('固定费用 元')),
+                      DropdownMenuItem(value: 'amount', child: Text('按金额录入')),
+                      DropdownMenuItem(value: 'shares', child: Text('按份额录入')),
                     ],
                     onChanged: busy
                         ? null
                         : (value) {
                             if (value == null) return;
                             setState(() {
-                              feeMode = value;
-                              fee.text = '0';
+                              entryMode = value;
                               previewResult = null;
                             });
                           },
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: fee,
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entryMode == 'amount'
+                        ? '${transactionType == 'buy' ? '买入' : '卖出'}金额（${transactionType == 'sell' ? '扣费前' : '含手续费'}）'
+                        : '${transactionType == 'buy' ? '买入' : '卖出'}份额',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: value,
                     enabled: !busy,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
                     decoration: InputDecoration(
                       border: const OutlineInputBorder(),
-                      suffixText: feeMode == 'rate' ? '%' : '元',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      prefixText: entryMode == 'amount' ? '￥ ' : null,
+                      suffixText: entryMode == 'amount' ? '元' : '份',
                     ),
                     onChanged: (_) => changed(),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Text(
+                    '手续费',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: feeMode,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'rate', child: Text('费率 %')),
+                            DropdownMenuItem(value: 'fixed', child: Text('固定费用 元')),
+                          ],
+                          onChanged: busy
+                              ? null
+                              : (value) {
+                                  if (value == null) return;
+                                  setState(() {
+                                    feeMode = value;
+                                    fee.text = '0';
+                                    previewResult = null;
+                                  });
+                                },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 6,
+                        child: TextField(
+                          controller: fee,
+                          enabled: !busy,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: InputDecoration(
+                            border: const OutlineInputBorder(),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            suffixText: feeMode == 'rate' ? '%' : '元',
+                          ),
+                          onChanged: (_) => changed(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-          fieldLabel(
-            '实际操作日期',
-            OutlinedButton.icon(
-              onPressed: busy
-                  ? null
-                  : () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.tryParse(date) ?? DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime.now(),
-                      );
-                      if (picked == null || !mounted) return;
-                      setState(() {
-                        date =
-                            '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-                        previewResult = null;
-                      });
-                    },
-              icon: const Icon(Icons.calendar_today_outlined),
-              label: Text(date),
+          const SizedBox(height: 12),
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '成交确认时间',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 6,
+                        child: OutlinedButton.icon(
+                          onPressed: busy
+                              ? null
+                              : () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate:
+                                        DateTime.tryParse(date) ?? DateTime.now(),
+                                    firstDate: DateTime(2000),
+                                    lastDate: DateTime.now(),
+                                  );
+                                  if (picked == null || !mounted) return;
+                                  setState(() {
+                                    date =
+                                        '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                                    previewResult = null;
+                                  });
+                                },
+                          icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                          label: Text(date),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 5,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: cutoff,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'before', child: Text('15:00 前')),
+                            DropdownMenuItem(value: 'after', child: Text('15:00 后')),
+                          ],
+                          onChanged: busy
+                              ? null
+                              : (value) {
+                                  if (value == null) return;
+                                  setState(() {
+                                    cutoff = value;
+                                    previewResult = null;
+                                  });
+                                },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '备注（可选）',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: note,
+                    enabled: !busy,
+                    maxLength: 200,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    onChanged: (_) => changed(),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '来源（可选）',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: source,
+                    enabled: !busy,
+                    maxLength: 100,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    onChanged: (_) => changed(),
+                  ),
+                ],
+              ),
             ),
           ),
-          fieldLabel(
-            '15:00 前后',
-            DropdownButtonFormField<String>(
-              initialValue: cutoff,
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-              items: const [
-                DropdownMenuItem(value: 'before', child: Text('15:00 前')),
-                DropdownMenuItem(value: 'after', child: Text('15:00 后')),
-              ],
-              onChanged: busy
-                  ? null
-                  : (value) {
-                      if (value == null) return;
-                      setState(() {
-                        cutoff = value;
-                        previewResult = null;
-                      });
-                    },
-            ),
-          ),
-          fieldLabel(
-            '备注（可选）',
-            TextField(
-              controller: note,
-              enabled: !busy,
-              maxLength: 200,
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-              onChanged: (_) => changed(),
-            ),
-          ),
-          fieldLabel(
-            '来源（可选）',
-            TextField(
-              controller: source,
-              enabled: !busy,
-              maxLength: 100,
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-              onChanged: (_) => changed(),
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           if (error != null)
-            Text(
-              error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ),
           if (previewResult != null) _PreviewCard(result: previewResult!),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
@@ -416,6 +536,7 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
               ),
             ],
           ),
+          const SizedBox(height: 16),
         ],
       ],
     ),
@@ -449,11 +570,12 @@ class _PreviewCard extends StatelessWidget {
       if (pending) '待确认：${result['pendingReason'] ?? '正式净值尚未公布'}',
     ];
     return Card(
+      margin: EdgeInsets.zero,
       color: pending
           ? Theme.of(context).colorScheme.surfaceContainerHighest
           : null,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -480,6 +602,7 @@ class TransactionSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
+    margin: EdgeInsets.zero,
     child: Padding(
       padding: const EdgeInsets.all(20),
       child: Column(

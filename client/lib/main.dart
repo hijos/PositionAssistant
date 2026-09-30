@@ -954,7 +954,7 @@ class HoldingOverviewState {
   final bool isLoading;
 }
 
-/// Full-width "持仓概览" card with five label/value rows.
+/// "持仓概览" card with five label/value rows.
 ///
 /// It is a dedicated widget rather than a [SectionCard] because the figures
 /// must be right-aligned in a column of their own, which a single [Text] block
@@ -975,7 +975,9 @@ class HoldingOverviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = state.data;
     return Card(
-      margin: EdgeInsets.zero,
+      // Keep the same outer spacing as the other cards on the page, such as
+      // "当前持仓" and the "定投计划" entry.
+      margin: const EdgeInsets.all(4),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
         child: Column(
