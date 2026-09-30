@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'format_values.dart';
 import 'fund_search.dart';
 import 'import_page.dart';
@@ -72,6 +74,7 @@ class _HomeShellState extends State<HomeShell> {
   final _transactionCleanup = ValueNotifier<TransactionCleanupState>(
     (busy: false, hasCancelled: false),
   );
+  bool _confirmingPending = false;
   FundRepository? get currentFunds => localMode ? localFunds : remoteFunds;
   TransactionRepository? get currentTransactions => localMode
       ? localTransactions ??= LocalTransactionRepository(
@@ -93,7 +96,35 @@ class _HomeShellState extends State<HomeShell> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (localMode) localCatalog.refreshIfStale();
         if (mounted) setState(reloadFunds);
+        unawaited(_confirmPendingTransactions());
       });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_confirmPendingTransactions());
+      });
+    }
+  }
+
+  /// Re-check pending trades using the same repository operation as the
+  /// manual "重新确认待确认交易" action.  The list check avoids a needless
+  /// NAV request when there is nothing to confirm, while the guard prevents
+  /// startup and tab-selection callbacks from overlapping.
+  Future<void> _confirmPendingTransactions() async {
+    if (_confirmingPending) return;
+    final repository = currentTransactions;
+    if (repository == null) return;
+    _confirmingPending = true;
+    try {
+      final records = await repository.list();
+      if (!records.any((item) => item['status'] == 'pending')) return;
+      await repository.confirmPending();
+      _transactionHistoryKey.currentState?.reload();
+      if (mounted) setState(reloadFunds);
+    } catch (_) {
+      // The transaction page and its manual button surface failures to the
+      // user; background refresh should leave the existing records intact.
+    } finally {
+      _confirmingPending = false;
     }
   }
 
@@ -176,6 +207,7 @@ class _HomeShellState extends State<HomeShell> {
       remoteHoldings = RemoteHoldingRepository(token: token);
       reloadFunds();
     });
+    unawaited(_confirmPendingTransactions());
   }
 
   Future<void> logout() async {
@@ -634,7 +666,10 @@ class _HomeShellState extends State<HomeShell> {
     ),
     bottomNavigationBar: NavigationBar(
       selectedIndex: selected,
-      onDestinationSelected: (value) => setState(() => selected = value),
+      onDestinationSelected: (value) {
+        setState(() => selected = value);
+        if (value == 1) unawaited(_confirmPendingTransactions());
+      },
       destinations: [
         for (var i = 0; i < titles.length; i++)
           NavigationDestination(icon: Icon(icons[i]), label: titles[i]),
