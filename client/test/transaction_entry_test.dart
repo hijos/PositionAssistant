@@ -186,6 +186,28 @@ void main() {
     expect(repo.lastCreate?['type'], 'buy');
   });
 
+  testWidgets('buy entry can add a fund and selects the newly added fund', (
+    tester,
+  ) async {
+    final repo = FakeTransactionRepository();
+    final addedFund = {'code': '000002', 'name': '刚添加基金B', 'type': '股票型'};
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TransactionEntryPage(
+          funds: [fund],
+          repository: repo,
+          onSearchAndAdd: () async => [fund, addedFund],
+        ),
+      ),
+    );
+    expect(find.text('搜索基金并添加到自选列表'), findsOneWidget);
+    await tester.tap(find.text('搜索基金并添加到自选列表'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    expect(find.text('刚添加基金B · 000002'), findsNWidgets(2));
+  });
+
   testWidgets('sell entry exposes sell labels and sends sell direction', (
     tester,
   ) async {

@@ -58,9 +58,10 @@ class _HomeShellState extends State<HomeShell> {
     () => localStorage ??= openLocalRepository(),
   );
   RemoteFundRepository? remoteFunds;
-  late final LocalAutomaticQuotaRepository localQuotas = LocalAutomaticQuotaRepository(
-    () => localStorage ??= openLocalRepository(),
-  );
+  late final LocalAutomaticQuotaRepository localQuotas =
+      LocalAutomaticQuotaRepository(
+        () => localStorage ??= openLocalRepository(),
+      );
   RemoteQuotaRepository? remoteQuotas;
   LocalTransactionRepository? localTransactions;
   RemoteTransactionRepository? remoteTransactions;
@@ -77,9 +78,10 @@ class _HomeShellState extends State<HomeShell> {
   // button), forwards taps through this key, and mirrors the action's
   // enabled/busy state from the notifier.
   final _transactionHistoryKey = GlobalKey<TransactionHistoryPageState>();
-  final _transactionCleanup = ValueNotifier<TransactionCleanupState>(
-    (busy: false, hasCancelled: false),
-  );
+  final _transactionCleanup = ValueNotifier<TransactionCleanupState>((
+    busy: false,
+    hasCancelled: false,
+  ));
   bool _confirmingPending = false;
   FundRepository? get currentFunds => localMode ? localFunds : remoteFunds;
   TransactionRepository? get currentTransactions => localMode
@@ -244,9 +246,9 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  Future<void> openSearch() async {
+  Future<List<Map<String, dynamic>>> openSearch() async {
     if (!localMode && remoteFunds == null) await login();
-    if (!mounted || currentFunds == null) return;
+    if (!mounted || currentFunds == null) return const [];
     final repository = currentFunds!;
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
@@ -257,7 +259,9 @@ class _HomeShellState extends State<HomeShell> {
         ),
       ),
     );
+    final updated = await repository.list();
     if (mounted) setState(reloadFunds);
+    return updated;
   }
 
   Future<void> openTransactionEntry() async {
@@ -275,8 +279,11 @@ class _HomeShellState extends State<HomeShell> {
     if (!mounted) return;
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) =>
-            TransactionEntryPage(funds: funds, repository: transactions),
+        builder: (_) => TransactionEntryPage(
+          funds: funds,
+          repository: transactions,
+          onSearchAndAdd: openSearch,
+        ),
       ),
     );
     if (mounted) setState(reloadFunds);
@@ -663,8 +670,16 @@ class _HomeShellState extends State<HomeShell> {
     body: SafeArea(
       child: selected == 3
           ? (localMode || remoteQuotas != null
-              ? QuotaPage(key: ValueKey(localMode ? 'local-quota' : remoteQuotas), repository: localMode ? localQuotas : remoteQuotas!)
-              : Center(child: FilledButton(onPressed: login, child: const Text('登录查看额度'))))
+                ? QuotaPage(
+                    key: ValueKey(localMode ? 'local-quota' : remoteQuotas),
+                    repository: localMode ? localQuotas : remoteQuotas!,
+                  )
+                : Center(
+                    child: FilledButton(
+                      onPressed: login,
+                      child: const Text('登录查看额度'),
+                    ),
+                  ))
           : selected == 1
           ? _transactionBody()
           : Center(

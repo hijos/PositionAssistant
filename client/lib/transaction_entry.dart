@@ -6,11 +6,13 @@ class TransactionEntryPage extends StatefulWidget {
   const TransactionEntryPage({
     required this.funds,
     required this.repository,
+    this.onSearchAndAdd,
     this.initialType = 'buy',
     super.key,
   });
   final List<Map<String, dynamic>> funds;
   final TransactionRepository repository;
+  final Future<List<Map<String, dynamic>>> Function()? onSearchAndAdd;
   final String initialType;
 
   @override
@@ -18,6 +20,7 @@ class TransactionEntryPage extends StatefulWidget {
 }
 
 class _TransactionEntryPageState extends State<TransactionEntryPage> {
+  late List<Map<String, dynamic>> funds;
   late final TextEditingController value = TextEditingController(text: '100');
   late final TextEditingController fee = TextEditingController(text: '0');
   late final TextEditingController note = TextEditingController();
@@ -37,22 +40,43 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
   @override
   void initState() {
     super.initState();
+    funds = List<Map<String, dynamic>>.of(widget.funds);
     transactionType = ['buy', 'sell'].contains(widget.initialType)
         ? widget.initialType
         : 'buy';
-    fundCode = widget.funds.isEmpty
-        ? null
-        : widget.funds.first['code'] as String;
+    fundCode = funds.isEmpty ? null : funds.first['code'] as String;
     final now = DateTime.now();
     date =
         '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
   Map<String, dynamic>? get selectedFund {
-    for (final fund in widget.funds) {
+    for (final fund in funds) {
       if (fund['code'] == fundCode) return fund;
     }
     return null;
+  }
+
+  Future<void> searchAndAddFund() async {
+    final callback = widget.onSearchAndAdd;
+    if (callback == null || busy) return;
+    final oldCodes = funds
+        .map((fund) => fund['code'])
+        .whereType<String>()
+        .toSet();
+    final updated = await callback();
+    if (!mounted) return;
+    final next = List<Map<String, dynamic>>.of(updated);
+    final added = next.where((fund) {
+      final code = fund['code'];
+      return code is String && !oldCodes.contains(code);
+    }).toList();
+    setState(() {
+      funds = next;
+      if (added.isNotEmpty) fundCode = added.last['code'] as String;
+      previewResult = null;
+      error = null;
+    });
   }
 
   Map<String, dynamic> draft() {
@@ -154,12 +178,20 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
     body: ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (widget.funds.isEmpty)
+        if (funds.isEmpty)
           const TransactionSectionCard(
             title: '暂无可用基金',
             description: '请先在基金搜索与添加中添加基金，再录入交易。',
           ),
-        if (widget.funds.isNotEmpty) ...[
+        if (funds.isEmpty &&
+            widget.onSearchAndAdd != null &&
+            transactionType == 'buy')
+          OutlinedButton.icon(
+            onPressed: busy ? null : searchAndAddFund,
+            icon: const Icon(Icons.search),
+            label: const Text('搜索基金并添加到自选列表'),
+          ),
+        if (funds.isNotEmpty) ...[
           DropdownButtonFormField<String>(
             initialValue: fundCode,
             isExpanded: true,
@@ -168,7 +200,7 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
               border: OutlineInputBorder(),
             ),
             items: [
-              for (final fund in widget.funds)
+              for (final fund in funds)
                 DropdownMenuItem(
                   value: fund['code'] as String,
                   child: Text(
@@ -187,6 +219,14 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                     });
                   },
           ),
+          if (widget.onSearchAndAdd != null && transactionType == 'buy') ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: busy ? null : searchAndAddFund,
+              icon: const Icon(Icons.search),
+              label: const Text('搜索基金并添加到自选列表'),
+            ),
+          ],
           fieldLabel(
             '交易方向',
             DropdownButtonFormField<String>(

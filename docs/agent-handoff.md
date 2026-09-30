@@ -847,3 +847,16 @@
 
 
 
+
+### 用户追加：买入交易录入中搜索并添加基金
+
+- 状态：done
+- 修改文件：`client/lib/main.dart`、`client/lib/transaction_entry.dart`、`client/test/transaction_entry_test.dart`。
+- 已实现：
+  - 买入交易录入页增加“搜索基金并添加到自选列表”入口，跳转现有“基金搜索与添加”页。
+  - 从搜索页通过系统返回或页面返回后重新读取当前数据源的自选基金；识别本次新增基金并自动选中顶部“基金”下拉项。
+  - 交易页使用返回后的基金列表刷新控件状态，空列表时仍保留搜索入口；卖出录入不显示该入口。
+- 测试命令及结果：`flutter test test\\transaction_entry_test.dart` 7 项通过；`flutter analyze lib\\main.dart lib\\transaction_entry.dart` 通过。
+- 未覆盖或遗留：合并运行 `widget_test.dart` 受既有测试环境缺少 sqflite `databaseFactory` 初始化影响，未归因于本次改动。
+- 下一任务：F44 Web 与 Android 远端一致性验收。
+- 更新时间：2026-09-30。
