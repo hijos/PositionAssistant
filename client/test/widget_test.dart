@@ -11,12 +11,13 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(const PositionAssistantApp());
       // Local storage is Android-only, so this run renders the failure state of
-      // the holdings overview. It must still be a full-width card with the four
+      // the holdings overview. It must still be a full-width card with the five
       // labelled rows rather than a small square or a wall of plain text.
       expect(find.byType(HoldingOverviewCard), findsOneWidget);
       expect(find.text('持仓概览'), findsOneWidget);
       expect(find.text('总市值'), findsOneWidget);
       expect(find.text('总收益'), findsOneWidget);
+      expect(find.text('总成本'), findsOneWidget);
       expect(find.text('预估市值'), findsOneWidget);
       expect(find.text('预估收益'), findsOneWidget);
       expect(find.text('正式收益'), findsNothing);

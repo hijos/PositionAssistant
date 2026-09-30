@@ -734,7 +734,21 @@
 - 下一任务：F44 Web 与 Android 远端一致性验收；本次停止，不继续。
 - 更新时间：2026-09-30。
 
-## 每次结束会话后的更新模板
+### F50：持仓概览总成本与预估收益对齐修复
+
+- 状态：done
+- 修改文件：`client/lib/main.dart`、`client/test/holdings_overview_test.dart`、`client/test/widget_test.dart`、`docs/agent-handoff.md`。
+- 已实现：
+  - 持仓概览在“总收益”下新增“总成本”，由各持仓 `cost` 汇总；空持仓显示 `—`，真实 0 保留为 `￥0.00`。
+  - “预估收益”说明图标改为跟在标签文字后，不再占用标签左侧的额外槽位；五行标签共用同一左端列，窄屏无溢出。
+  - 更新概览行数、成本金额、空值/零值、图标位置和首页导航测试。
+- 测试命令及结果：`flutter analyze` 无问题；定向 `flutter test test/holdings_overview_test.dart test/widget_test.dart` 18 项通过；完整 `flutter test` 61 项通过。
+- APK：release 构建成功，产物为 `client\\build\\app\\outputs\\flutter-apk\\持仓助手.apk`，大小约 50.5 MB；已删除重复的 `app-release.apk`。
+- 未覆盖或遗留：未进行 Android 真机手工验收；release 包使用项目当前默认签名配置。
+- 下一任务：F44 Web 与 Android 远端一致性验收。
+- 更新时间：2026-09-30。
+
+## 每次结束会话后的更新模板：
 
 以下仅为 Agent 填写记录的格式示例，不是任务或完成记录。结束时同步顶部状态与任务队列，在本节之前更新对应任务记录；同一任务沿用一个标题，保留重要修复历史，避免重复追加。未完成时也必须交接，不得将未完成任务勾选。
 

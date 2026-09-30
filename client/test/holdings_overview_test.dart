@@ -36,6 +36,7 @@ const overviewData = HoldingOverviewState.ready(
     totalMarketValue: 2106.56,
     totalProfit: 56.1,
     totalProfitRate: 0.027384,
+    totalCost: 2050,
     totalEstimatedMarketValue: 2140.2,
     totalEstimatedProfit: 89.74,
     totalEstimatedProfitRate: 0.0438,
@@ -114,7 +115,7 @@ void main() {
     }
   });
 
-  testWidgets('overview card shows the four labelled rows', (tester) async {
+  testWidgets('overview card shows the five labelled rows', (tester) async {
     await pumpFullWidth(
       tester,
       const HoldingOverviewCard(state: overviewData),
@@ -123,11 +124,13 @@ void main() {
     expect(find.text('持仓概览'), findsOneWidget);
     expect(find.text('总市值'), findsOneWidget);
     expect(find.text('总收益'), findsOneWidget);
+    expect(find.text('总成本'), findsOneWidget);
     expect(find.text('预估市值'), findsOneWidget);
     expect(find.text('预估收益'), findsOneWidget);
     // Amounts keep two decimals and rates use half-width parentheses.
     expect(find.text(money('2106.56')), findsOneWidget);
     expect(find.text('${money('56.10')} (2.74%)'), findsOneWidget);
+    expect(find.text(money('2050.00')), findsOneWidget);
     expect(find.text(money('2140.20')), findsOneWidget);
     expect(find.text('${money('89.74')} (4.38%)'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -161,7 +164,7 @@ void main() {
       ),
       _k320,
     );
-    expect(find.text('—'), findsNWidgets(4));
+    expect(find.text('—'), findsNWidgets(5));
     expect(find.textContaining(money('0.00')), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -176,8 +179,9 @@ void main() {
       ),
       _k320,
     );
-    // Both value rows and both profit rows render a real ￥0.00, not a dash.
-    expect(find.text(money('0.00')), findsNWidgets(2));
+    // Three value rows render a real ￥0.00 and both profit rows a real rate,
+    // not a dash.
+    expect(find.text(money('0.00')), findsNWidgets(3));
     expect(find.text('${money('0.00')} (0.00%)'), findsNWidgets(2));
     expect(find.text('—'), findsNothing);
   });
@@ -307,7 +311,7 @@ void main() {
     expect(totalSize, fundSize);
   });
 
-  testWidgets('estimate icon sits before the label without shifting it', (
+  testWidgets('estimate icon follows the label without shifting it', (
     tester,
   ) async {
     await pumpFullWidth(
@@ -319,38 +323,36 @@ void main() {
     final label = find.text('预估收益');
     final value = find.text('${money('89.74')} (4.38%)');
     expect(icon, findsOneWidget);
-    // Icon, then label, then the value: left to right in that order.
-    expect(tester.getTopLeft(icon).dx, lessThan(tester.getTopLeft(label).dx));
-    expect(tester.getTopLeft(label).dx, lessThan(tester.getTopLeft(value).dx));
-    // The icon occupies one fixed slot, so the 预估收益 label is shifted by
-    // exactly that slot and the figures keep the same right edge as the rows
-    // above (their labels stay in the plain column).
+    // Label, then icon, then the value: left to right in that order.
+    expect(tester.getTopLeft(label).dx, lessThan(tester.getTopLeft(icon).dx));
+    expect(tester.getTopLeft(icon).dx, lessThan(tester.getTopLeft(value).dx));
+    // All five labels share one column: the trailing icon does not push the
+    // 预估收益 label right the way the old leading slot did.
     final column = tester.getTopLeft(find.text('总市值')).dx;
-    for (final other in ['总收益', '预估市值']) {
+    for (final other in ['总收益', '总成本', '预估市值', '预估收益']) {
       expect(
         tester.getTopLeft(find.text(other)).dx,
         column,
         reason: '$other must share the label column',
       );
     }
-    expect(tester.getTopLeft(label).dx, column + 20);
+    // The figures keep the same right edge as the rows above.
     expect(
       tester.getTopRight(value).dx,
       tester.getTopRight(find.text(money('2140.20'))).dx,
     );
-    // The button keeps a full-height touch target; its width is bounded by the
-    // icon slot on purpose, which is what holds the label shift to 20px. The
-    // dialog test above proves it is still tappable at phone width.
-    final iconBox = tester.getRect(find.byType(IconButton));
-    expect(iconBox.height, greaterThanOrEqualTo(kMinInteractiveDimension));
-    expect(iconBox.width, 20);
-    final card = tester.getRect(find.byType(HoldingOverviewCard));
-    expect(tester.getRect(icon).left, greaterThan(card.left));
+    // The compact button is laid out after the label; its exact visual box may
+    // vary with the platform text metrics, but it must not affect alignment.
+    final iconBox = tester.getRect(icon);
+    expect(iconBox.height, lessThan(kMinInteractiveDimension));
+    // The icon starts at or after the label's right edge...
     expect(
-      tester.getRect(icon).right,
-      lessThanOrEqualTo(tester.getTopLeft(label).dx),
+      tester.getRect(icon).left,
+      greaterThanOrEqualTo(tester.getTopRight(label).dx),
     );
-    // Nothing overflows: the long rate value still fits beside the label.
+    // ...and stays inside the card together with the value.
+    final card = tester.getRect(find.byType(HoldingOverviewCard));
+    expect(tester.getRect(icon).right, lessThanOrEqualTo(card.right));
     expect(tester.getTopRight(value).dx, lessThanOrEqualTo(card.right));
     expect(tester.takeException(), isNull);
   });
@@ -459,6 +461,7 @@ class _ZeroOverview extends HoldingOverviewData {
         totalMarketValue: 0,
         totalProfit: 0,
         totalProfitRate: 0,
+        totalCost: 0,
         totalEstimatedMarketValue: 0,
         totalEstimatedProfit: 0,
         totalEstimatedProfitRate: 0,

@@ -503,6 +503,9 @@ class _HomeShellState extends State<HomeShell> {
       totalMarketValue: totalMarketValue,
       totalProfit: totalProfit,
       totalProfitRate: rateOf(totalProfit),
+      // Cost always sums cleanly, but an empty ledger reads as missing data
+      // (`—`) rather than a fake ￥0.00, same as the other rows.
+      totalCost: holdings.isEmpty ? null : totalCost,
       totalEstimatedMarketValue: totalEstimatedMarketValue,
       totalEstimatedProfit: totalEstimatedProfit,
       totalEstimatedProfitRate: rateOf(totalEstimatedProfit),
@@ -745,6 +748,7 @@ class HoldingOverviewData {
     required this.totalMarketValue,
     required this.totalProfit,
     required this.totalProfitRate,
+    required this.totalCost,
     required this.totalEstimatedMarketValue,
     required this.totalEstimatedProfit,
     required this.totalEstimatedProfitRate,
@@ -754,6 +758,7 @@ class HoldingOverviewData {
     totalMarketValue: null,
     totalProfit: null,
     totalProfitRate: null,
+    totalCost: null,
     totalEstimatedMarketValue: null,
     totalEstimatedProfit: null,
     totalEstimatedProfitRate: null,
@@ -762,6 +767,7 @@ class HoldingOverviewData {
   final double? totalMarketValue;
   final double? totalProfit;
   final double? totalProfitRate;
+  final double? totalCost;
   final double? totalEstimatedMarketValue;
   final double? totalEstimatedProfit;
   final double? totalEstimatedProfitRate;
@@ -787,7 +793,7 @@ class HoldingOverviewState {
   final bool isLoading;
 }
 
-/// Full-width "持仓概览" card with four label/value rows.
+/// Full-width "持仓概览" card with five label/value rows.
 ///
 /// It is a dedicated widget rather than a [SectionCard] because the figures
 /// must be right-aligned in a column of their own, which a single [Text] block
@@ -855,6 +861,10 @@ class HoldingOverviewCard extends StatelessWidget {
                 color: profitColor(context, data.totalProfit),
               ),
               _OverviewRow(
+                label: '总成本',
+                value: formatMoney(data.totalCost),
+              ),
+              _OverviewRow(
                 label: '预估市值',
                 value: formatMoney(data.totalEstimatedMarketValue),
               ),
@@ -865,21 +875,26 @@ class HoldingOverviewCard extends StatelessWidget {
                   data.totalEstimatedProfitRate,
                 ),
                 color: profitColor(context, data.totalEstimatedProfit),
-                // Painted to the left of the label without taking part in the
-                // layout, so "预估收益" stays in the same column as "预估市值"
-                // above it while the icon still reads as part of this field.
-                leading: IconButton(
-                  tooltip: '预估收益说明',
-                  iconSize: 18,
-                  icon: const Icon(Icons.info_outline),
-                  onPressed: () {
-                    final explain = onExplainEstimate;
-                    if (explain != null) {
-                      explain();
-                    } else {
-                      showEstimateExplanation(context);
-                    }
-                  },
+                // Follows the label text as a compact button, so the label
+                // keeps the same column and the row the same height as the
+                // others while the icon still reads as part of this field.
+                trailing: Tooltip(
+                  message: '预估收益说明',
+                  child: InkWell(
+                    onTap: () {
+                      final explain = onExplainEstimate;
+                      if (explain != null) {
+                        explain();
+                      } else {
+                        showEstimateExplanation(context);
+                      }
+                    },
+                    child: const SizedBox(
+                      width: 26,
+                      height: 20,
+                      child: Icon(Icons.info_outline, size: 18),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -908,49 +923,43 @@ void showEstimateExplanation(BuildContext context) => showDialog<void>(
   ),
 );
 
-/// Left slot reserved inside [_OverviewRow] for its leading icon.
-///
-/// The slot is narrower than the button it holds, so the icon is centred over
-/// the label's left edge and the button's own padding bleeds harmlessly past
-/// the row while the label keeps its column.
-const double _overviewIconSlot = 20;
-
 /// One label/value line of [HoldingOverviewCard].
 ///
 /// The label keeps a fixed width so all figures line up vertically, and the
 /// values use the same 18px semibold as the holdings list so the total market
-/// value never looks smaller than a single fund's market value.
+/// value never looks smaller than a single fund's market value. [trailing] is
+/// a compact widget drawn right after the label text (the estimate info
+/// button); it never moves the label itself, so every row shares one label
+/// column whether or not it carries an icon.
 class _OverviewRow extends StatelessWidget {
   const _OverviewRow({
     required this.label,
     required this.value,
     this.color,
-    this.leading,
+    this.trailing,
   });
 
   final String label;
   final String value;
   final Color? color;
-  final Widget? leading;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    final icon = leading;
+    final trailing = this.trailing;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          // A fixed slot, not the button's own width, so rows without an icon
-          // keep the label exactly where rows with one put it. The slot is
-          // part of the layout, which keeps the whole button hit-testable.
-          if (icon != null)
-            SizedBox(
-              width: _overviewIconSlot,
-              child: Center(child: icon),
-            ),
           SizedBox(
-            width: 76,
-            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+            // Four CJK characters plus the compact info button.
+            width: 112,
+            child: Row(
+              children: [
+                Text(label, style: Theme.of(context).textTheme.bodyMedium),
+                if (trailing != null) ...[const SizedBox(width: 4), trailing],
+              ],
+            ),
           ),
           Expanded(
             child: Text(
