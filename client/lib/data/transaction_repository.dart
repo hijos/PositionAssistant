@@ -189,11 +189,55 @@ class LocalTransactionRepository implements TransactionRepository {
       (await open()).list('transactions');
 
   @override
-  Future<Map<String, dynamic>> preview(Map<String, dynamic> draft) async => {
-    ...normalizeTransaction(draft),
-    'status': 'pending',
-    'pendingReason': '本地模式暂未连接正式净值，交易保存为待确认',
-  };
+  Future<Map<String, dynamic>> preview(Map<String, dynamic> draft) async {
+    final normalized = normalizeTransaction(draft);
+    final snapshot = await nav.forDate(
+      '${normalized['fundCode']}',
+      '${normalized['date']}',
+      cutoff: '${normalized['cutoff']}',
+    );
+    if (snapshot == null) {
+      return {
+        ...normalized,
+        'status': 'pending',
+        'pendingReason': '对应交易日正式净值尚未公布或暂时无法获取',
+      };
+    }
+    return _settlePreview(normalized, snapshot);
+  }
+
+  Map<String, dynamic> _settlePreview(
+    Map<String, dynamic> record,
+    Map<String, dynamic> snapshot,
+  ) {
+    final price = num.tryParse('${snapshot['nav']}')!.toDouble();
+    final input = num.tryParse('${record[record['entryMode']]}')!.toDouble();
+    final feeRate = num.tryParse('${record['feeRate'] ?? 0}')?.toDouble() ?? 0;
+    final fixedFee =
+        num.tryParse('${record['fixedFee'] ?? 0}')?.toDouble() ?? 0;
+    final fee = record['feeMode'] == 'fixed'
+        ? fixedFee
+        : (record['type'] == 'buy' && record['entryMode'] == 'amount'
+              ? input - input / (1 + feeRate / 100)
+              : input * feeRate / 100);
+    final shares = record['entryMode'] == 'amount'
+        ? (input - fee) / price
+        : input;
+    final amount = record['entryMode'] == 'amount'
+        ? input
+        : input * price + (record['type'] == 'buy' ? fee : 0);
+    return {
+      ...record,
+      'status': 'preview',
+      'nav': price,
+      'tradeNav': price,
+      'navDate': snapshot['navDate'],
+      'amount': (amount * 100).round() / 100,
+      'shares': (shares * 100).round() / 100,
+      'fee': (fee * 100).round() / 100,
+      'pendingReason': null,
+    };
+  }
 
   @override
   Future<Map<String, dynamic>> create(Map<String, dynamic> draft) async {
@@ -210,7 +254,7 @@ class LocalTransactionRepository implements TransactionRepository {
       ...normalized,
       'id': 'local-${DateTime.now().microsecondsSinceEpoch}',
       'status': 'pending',
-      'pendingReason': '本地模式暂未连接正式净值，交易保存为待确认',
+      'pendingReason': '对应交易日正式净值尚未公布或暂时无法获取',
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     };
     await storage.put('transactions', record['id'] as String, record);

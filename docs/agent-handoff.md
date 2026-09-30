@@ -860,3 +860,12 @@
 - 未覆盖或遗留：合并运行 `widget_test.dart` 受既有测试环境缺少 sqflite `databaseFactory` 初始化影响，未归因于本次改动。
 - 下一任务：F44 Web 与 Android 远端一致性验收。
 - 更新时间：2026-09-30。
+
+### 用户追加：补齐本地买入预览计算
+
+- 状态：done
+- 修改文件：`client/lib/data/transaction_repository.dart`
+- 已实现：本地“预览买入”按交易日期/截止时间查询正式净值；查到后显示净值日期、成交净值、手续费、交易金额和预计份额，并沿用确认流程的金额与费用计算口径。查询不到时保留待确认，但提示改为“对应交易日正式净值尚未公布或暂时无法获取”。
+- 验证：`flutter analyze lib/data/transaction_repository.dart` 通过；`flutter test test/transaction_entry_test.dart` 20 项通过；`flutter test test/repository_test.dart` 12 项通过。
+- 未覆盖：未在 Android 真机上手工验证联网获取净值时的预览耗时与网络失败交互。
+- 更新时间：2026-09-30。
