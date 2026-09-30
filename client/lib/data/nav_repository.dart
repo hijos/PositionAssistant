@@ -119,8 +119,82 @@ class LocalNavRepository {
         if (snapshot['dailyChange'] != null)
           'dailyChange': snapshot['dailyChange'],
         'navSource': snapshot['source'] ?? 'local-nav-cache',
+        ...await _estimateFromQqq(
+          snapshot['nav'] as num,
+          snapshot['navDate'] as String,
+        ),
       });
     }
+  }
+
+  Future<Map<String, dynamic>> _estimateFromQqq(
+    num nav,
+    String navDate,
+  ) async {
+    try {
+      final qqq = await _fetchYahooQuote('QQQ', navDate);
+      final fx = await _fetchYahooQuote('CNY=X', navDate);
+      final dates = qqq.keys
+          .where((date) => date.compareTo(navDate) > 0 && fx.containsKey(date))
+          .toList()
+        ..sort();
+      if (dates.isEmpty) return const {};
+      final date = dates.last;
+      final rate = (qqq[date]! / qqq[navDate]!) *
+              (fx[date]! / fx[navDate]!) -
+          1;
+      final estimatedNav = (nav * (1 + rate) * 1000000).round() / 1000000;
+      return {
+        'estimatedNav': estimatedNav,
+        'estimateAt': '${date}T23:59:59.000Z',
+        'estimateSource': 'QQQ + USD/CNY（Yahoo Finance，100%代理）',
+        'estimateCoverage': 1.0,
+        'estimateRuleVersion': 'qqq-fx-v1',
+        'estimateBaseDate': navDate,
+        'estimateMethod': '按 QQQ + USD/CNY 组合涨跌估算（100%）；不含费用、分红与调仓',
+      };
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  Future<Map<String, double>> _fetchYahooQuote(
+    String symbol,
+    String baseDate,
+  ) async {
+    final start = DateTime.parse(baseDate)
+        .subtract(const Duration(days: 7))
+        .millisecondsSinceEpoch ~/ 1000;
+    final end = DateTime.now().millisecondsSinceEpoch ~/ 1000 + 86400;
+    final response = await client
+        .get(Uri.parse(
+          'https://query1.finance.yahoo.com/v8/finance/chart/$symbol'
+          '?interval=1d&period1=$start&period2=$end',
+        ))
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('行情请求失败');
+    }
+    final result = (jsonDecode(response.body) as Map)['chart']?['result']?[0];
+    if (result is! Map) throw StateError('行情响应无效');
+    final timestamps = result['timestamp'];
+    final closes = result['indicators']?['quote']?[0]?['close'];
+    if (timestamps is! List || closes is! List) {
+      throw StateError('行情数据缺失');
+    }
+    final points = <String, double>{};
+    for (var i = 0; i < timestamps.length && i < closes.length; i++) {
+      final timestamp = num.tryParse('${timestamps[i]}');
+      final close = num.tryParse('${closes[i]}');
+      if (timestamp == null || close == null || close <= 0) continue;
+      final date = DateTime.fromMillisecondsSinceEpoch(
+        timestamp.toInt() * 1000,
+        isUtc: true,
+      ).toIso8601String().substring(0, 10);
+      points[date] = close.toDouble();
+    }
+    if (!points.containsKey(baseDate)) throw StateError('缺少基准日行情');
+    return points;
   }
 
   Future<Map<String, dynamic>?> _fetchLatest(String code) async {

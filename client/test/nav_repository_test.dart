@@ -130,4 +130,61 @@ void main() {
     expect(fund?['nav'], 3.5);
     expect(fund?['navDate'], '2026-09-28');
   });
+
+  test('refreshLatest stores QQQ and USD/CNY estimate metadata', () async {
+    await repository.put('funds', '539001', {
+      'code': '539001',
+      'name': '建信纳斯达克100指数(QDII)A人民币',
+      'type': 'QDII',
+      'nav': 3.4,
+      'navDate': '2026-09-27',
+    });
+    final base = DateTime.utc(2026, 9, 28).millisecondsSinceEpoch ~/ 1000;
+    final latest = DateTime.utc(2026, 9, 29).millisecondsSinceEpoch ~/ 1000;
+    final nav = LocalNavRepository(
+      () async => repository,
+      client: MockClient((request) async {
+        if (request.url.host == 'query1.finance.yahoo.com') {
+          final symbol = request.url.pathSegments.last;
+          final prices = symbol == 'QQQ' ? [100, 102] : [7, 7.07];
+          return http.Response(
+            jsonEncode({
+              'chart': {
+                'result': [
+                  {
+                    'timestamp': [base, latest],
+                    'indicators': {
+                      'quote': [
+                        {'close': prices},
+                      ],
+                    },
+                  },
+                ],
+              },
+            }),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode({
+            'Data': {
+              'LSJZList': [
+                {'FSRQ': '2026-09-28', 'DWJZ': '3.5'},
+              ],
+            },
+          }),
+          200,
+        );
+      }),
+    );
+
+    await nav.refreshLatest();
+
+    final fund = await repository.get('funds', '539001');
+    expect(fund?['estimatedNav'], closeTo(3.5 * 1.02 * 1.01, 1e-6));
+    expect(fund?['estimateCoverage'], 1.0);
+    expect(fund?['estimateRuleVersion'], 'qqq-fx-v1');
+    expect(fund?['estimateSource'], contains('QQQ + USD/CNY'));
+  });
 }
+
