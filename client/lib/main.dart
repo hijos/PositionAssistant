@@ -605,7 +605,9 @@ class _HomeShellState extends State<HomeShell> {
     ),
   );
 
+  // 底部导航用简称以控制宽度，顶栏标题用页面全称，两者只有“交易”不同。
   static const titles = ['持仓', '交易', '自选', '额度', '设置'];
+  static const pageTitles = ['持仓', '交易记录', '自选', '额度', '设置'];
   static const icons = [
     Icons.account_balance_wallet_outlined,
     Icons.swap_horiz,
@@ -613,11 +615,40 @@ class _HomeShellState extends State<HomeShell> {
     Icons.list_alt,
     Icons.settings_outlined,
   ];
+  // 「持仓」「设置」两页自身带有标题内容，不再重复显示顶栏。
+  static const tabsWithoutAppBar = {0, 4};
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(selected == 1 ? '交易记录' : '持仓助手 · ${titles[selected]}'),
+    appBar: _appBar(),
+    body: SafeArea(
+      child: selected == 1
+          ? _transactionBody()
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 960),
+                child: ListView(
+                  key: ValueKey(selected),
+                  padding: const EdgeInsets.all(16),
+                  children: _content(context),
+                ),
+              ),
+            ),
+    ),
+    bottomNavigationBar: NavigationBar(
+      selectedIndex: selected,
+      onDestinationSelected: (value) => setState(() => selected = value),
+      destinations: [
+        for (var i = 0; i < titles.length; i++)
+          NavigationDestination(icon: Icon(icons[i]), label: titles[i]),
+      ],
+    ),
+  );
+
+  PreferredSizeWidget? _appBar() {
+    if (tabsWithoutAppBar.contains(selected)) return null;
+    return AppBar(
+      title: Text(pageTitles[selected]),
       actions: selected == 1 && (localMode || remoteTransactions != null)
           ? [
               ValueListenableBuilder<TransactionCleanupState>(
@@ -657,30 +688,8 @@ class _HomeShellState extends State<HomeShell> {
               const SizedBox(width: 8),
             ]
           : null,
-    ),
-    body: SafeArea(
-      child: selected == 1
-          ? _transactionBody()
-          : Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 960),
-                child: ListView(
-                  key: ValueKey(selected),
-                  padding: const EdgeInsets.all(16),
-                  children: _content(context),
-                ),
-              ),
-            ),
-    ),
-    bottomNavigationBar: NavigationBar(
-      selectedIndex: selected,
-      onDestinationSelected: (value) => setState(() => selected = value),
-      destinations: [
-        for (var i = 0; i < titles.length; i++)
-          NavigationDestination(icon: Icon(icons[i]), label: titles[i]),
-      ],
-    ),
-  );
+    );
+  }
 
   Widget _transactionBody() {
     final repository = currentTransactions;

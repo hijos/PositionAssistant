@@ -8,11 +8,12 @@
 - 队列已标记完成：`F01`、`F02`、`F05`、`F09`、`F10`、`F15`、`F16`、`F17`、`F18`、`F19`、`F20`、`F21`、`F22`、`F23`、`F24`、`F25`、`F27`、`F28`、`F29`、`F30`、`F31`、`F32`、`F33`、`F34`、`F35`、`F36`、`F37`、`F38`、`F39`、`F40`、`F48`；其中 F10 上次仅运行语法检查和密码测试，尚无专项越权测试结果，不应视为隔离验收通过。
 - 当前待执行任务：F44 Web 与 Android 远端一致性验收。
 - 待外部验收：`F03`、`F04`、`F06`、`F07`、`F08`、`F11`、`F12`、`F13`、`F26` 为 `implemented_pending_validation`；具体遗留见各项记录。
-- 正在执行的任务：（无）。本次会话完成用户追加的 F52（自选列表长按删除基金），未启动 F44。
+- 正在执行的任务：（无）。本次会话完成用户追加的界面精简（顶栏标题与持仓/设置页顶栏），未启动 F44。
 - F48 结果：done；服务端永久删除与批量清理接口、Flutter 仓储与交易记录页交互均已实现并通过本机测试；未做 Android 真机与真实远端手工验收。
 - F49 结果：done；持仓概览改为全宽专用卡片（四行标签/数值对齐、预估收益含说明弹窗）、基金行改为左右两列紧凑布局，统一 `￥`/两位小数/中文括号格式，并补齐远端与服务端的 `estimatedMarketValue`；本机 `flutter analyze` 无问题、`flutter test` 58 项通过；未做真机手工验收与 APK 重打包。
 - F51 结果：done；底部导航改为交易记录直达、自选基金和持仓内定投计划，新增自选添加基金与当前持仓添加交易入口；`flutter analyze` 通过，完整 `flutter test` 61 项通过。
 - F52 结果：done；自选基金行移除行内垃圾桶按钮，改为长按弹出删除操作面板（删除仍保留二次确认对话框）；行渲染抽为公开组件 `FundListTile` 并新增 4 项专项测试；`flutter analyze` 无问题，完整 `flutter test` 65 项通过。
+- 用户追加（无队列编号）结果：done；顶栏标题去掉「持仓助手 · 」前缀，「持仓」「设置」两个 Tab 不再显示顶栏；`flutter analyze` 无问题，完整 `flutter test` 65 项通过。
 - 下一任务：F44 Web 与 Android 远端一致性验收。
 - 当前阻塞：无 F48 阻塞；既有 3 项服务端测试失败（`test/catalog.test.js` 缓存时间戳、`test/plans.test.js` 两项）已在未修改的 HEAD 上复现，属本次改动前的缺口。Docker/PostgreSQL 运行验证留待用户 Linux 服务器环境完成。
 - 依据文档：[`functions.md`](../functions.md)
@@ -777,6 +778,19 @@
 - 测试命令及结果：`flutter analyze` 无问题；`flutter test` 65 项通过（含新增 `test/fund_list_test.dart` 4 项：无行内按钮、长按取消不删除、选择删除调用移除、普通点击不删除）。
 - APK：release 构建成功（Gradle 80.0 秒，增量、未执行 `flutter clean`），产物为 `client\build\app\outputs\flutter-apk\持仓助手.apk`，50.6 MB / 67 个条目，重复的 `app-release.apk` 已删除。
 - 未覆盖或遗留：未在 Android 真机手工确认长按手势、底部面板和确认弹窗的串联体验；release 包仍使用项目当前默认（debug）签名。
+- 下一任务：F44 Web 与 Android 远端一致性验收。
+- 更新时间：2026-09-30。
+
+### 用户追加：顶栏标题精简与持仓/设置页去顶栏（无队列编号）
+
+- 状态：done
+- 修改文件：`client/lib/main.dart`、`client/test/widget_test.dart`、本文件。
+- 已实现：
+  - 顶栏标题去掉「持仓助手 · 」前缀。原实现用 `selected == 1 ? '交易记录' : '持仓助手 · ${titles[selected]}'` 把底部导航数组复用为顶栏标题，现拆成两份常量：`titles` 继续供底部导航用简称（`交易`），新增 `pageTitles` 供顶栏用页面全称（`交易记录`），顶栏改为纯查表 `Text(pageTitles[selected])`。
+  - 「持仓」「设置」两个 Tab 不再显示顶栏：新增 `tabsWithoutAppBar = {0, 4}`，顶栏从 `build` 抽为 `_appBar()`，命中集合时返回 `null`。持仓页顶部直接是持仓概览卡片，设置页顶部直接是数据模式卡片；交易页的「清理已取消交易」与自选页的「添加基金」按钮位置不变，`body` 原有 `SafeArea` 保证去顶栏后内容不侵入状态栏。
+- 已确定约定：底部导航用两字简称、顶栏用页面全称，两者各用一份常量数组，不再复用同一数组做下标特判；「持仓」「设置」页自身带标题内容，不重复显示顶栏。
+- 测试命令及结果：`flutter analyze` 无问题；完整 `flutter test` 65 项通过（320×640、1280×800 两种尺寸，无溢出异常）。`client/test/widget_test.dart` 新增 `find.byType(AppBar)` 断言：交易/自选/额度 `findsOneWidget`，持仓/设置 `findsNothing`。
+- 未覆盖或遗留：未在 Android 真机手工确认去顶栏后的状态栏间距与滚动观感；release 包仍使用项目当前默认（debug）签名。
 - 下一任务：F44 Web 与 Android 远端一致性验收。
 - 更新时间：2026-09-30。
 
