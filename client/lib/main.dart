@@ -483,7 +483,7 @@ class _HomeShellState extends State<HomeShell> {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                '长按或左滑基金可删除',
+                '左滑基金可删除',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -1199,14 +1199,23 @@ class FundListTile extends StatelessWidget {
         await openActions(context);
         return false;
       },
-      background: Container(
-        color: Theme.of(context).colorScheme.error,
+      background: Align(
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.onError),
+        child: Container(
+          width: 72,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.error,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.center,
+          child: Icon(
+            Icons.delete_outline,
+            color: Theme.of(context).colorScheme.onError,
+          ),
+        ),
       ),
-      child: InkWell(
-        onLongPress: () => openActions(context),
+      child: Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(

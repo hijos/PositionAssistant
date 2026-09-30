@@ -51,12 +51,12 @@ void main() {
   });
 
   testWidgets(
-    'long press opens the delete sheet and cancelling keeps the fund',
+    'swiping left opens the delete sheet and cancelling keeps the fund',
     (tester) async {
       final removed = <Map<String, dynamic>>[];
       await pumpRow(tester, removed);
 
-      await tester.longPress(find.text('天弘纳斯达克100指数发起(QDII)A'));
+      await tester.fling(find.text('天弘纳斯达克100指数发起(QDII)A'), const Offset(-500, 0), 1000);
       await tester.pumpAndSettle();
       expect(find.text('删除基金'), findsOneWidget);
       expect(find.text('取消'), findsOneWidget);
@@ -68,13 +68,13 @@ void main() {
     },
   );
 
-  testWidgets('picking the sheet action removes the long-pressed fund', (
+  testWidgets('picking the sheet action removes the swiped fund', (
     tester,
   ) async {
     final removed = <Map<String, dynamic>>[];
     await pumpRow(tester, removed);
 
-    await tester.longPress(find.byType(FundListTile));
+    await tester.fling(find.byType(FundListTile), const Offset(-500, 0), 1000);
     await tester.pumpAndSettle();
     await tester.tap(find.text('删除基金'));
     await tester.pumpAndSettle();
