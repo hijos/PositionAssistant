@@ -439,13 +439,13 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('fund row without an estimate shows 预估 —', (tester) async {
+  testWidgets('fund row without an estimate hides the estimate line', (tester) async {
     await pumpFullWidth(
       tester,
       HoldingListItem(item: holding(), onTap: () {}),
       _k320,
     );
-    expect(find.text('预估 —'), findsOneWidget);
+    expect(find.text('预估 —'), findsNothing);
     expect(find.text('${money('43.74')} (4.17%)'), findsOneWidget);
   });
 
@@ -464,7 +464,7 @@ void main() {
     // ￥0.00, while the estimator is simply absent.
     expect(find.text('—'), findsNWidgets(2));
     expect(find.text(money('0.00')), findsNothing);
-    expect(find.text('预估 —'), findsOneWidget);
+    expect(find.text('预估 —'), findsNothing);
   });
 }
 

@@ -547,16 +547,29 @@ class _HomeShellState extends State<HomeShell> {
     );
     final totalMarketValue = sumWhere(() => hasFormalValue, 'marketValue');
     final totalProfit = sumWhere(() => hasFormalValue, 'profit');
-    // "Estimated" follows the same rule but tolerates partial coverage: a fund
-    // whose estimate is unavailable simply does not contribute to the total.
-    final totalEstimatedMarketValue = sumWhere(
-      () => holdings.any((item) => item['estimatedMarketValue'] != null),
-      'estimatedMarketValue',
+    // Supported proxy estimates override the formal values. Other funds use
+    // their formal values in the overview so they remain part of the total.
+    double? effective(String estimateField, String formalField, Map<String, dynamic> item) =>
+        item[estimateField] ?? item[formalField];
+    final hasEstimatedMarketValue = holdings.any(
+      (item) => effective('estimatedMarketValue', 'marketValue', item) != null,
     );
-    final totalEstimatedProfit = sumWhere(
-      () => holdings.any((item) => item['estimatedProfit'] != null),
-      'estimatedProfit',
+    final hasEstimatedProfit = holdings.any(
+      (item) => effective('estimatedProfit', 'profit', item) != null,
     );
+    final totalEstimatedMarketValue = hasEstimatedMarketValue
+        ? holdings.fold<double>(
+            0,
+            (sum, item) =>
+                sum + (effective('estimatedMarketValue', 'marketValue', item) ?? 0),
+          )
+        : null;
+    final totalEstimatedProfit = hasEstimatedProfit
+        ? holdings.fold<double>(
+            0,
+            (sum, item) => sum + (effective('estimatedProfit', 'profit', item) ?? 0),
+          )
+        : null;
     double? rateOf(double? profit) =>
         profit == null || totalCost <= 0 ? null : profit / totalCost;
     return HoldingOverviewData(
@@ -1394,16 +1407,19 @@ class HoldingListItem extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    '预估 ${formatMoneyWithRate(item['estimatedProfit'], item['estimatedProfitRate'])}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  if (item['estimateRuleVersion'] == 'qqq-fx-v1' ||
+                      item['estimatedProfit'] != null ||
+                      item['estimatedMarketValue'] != null)
+                    Text(
+                      '预估 ${formatMoneyWithRate(item['estimatedProfit'], item['estimatedProfitRate'])}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
