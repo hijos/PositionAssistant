@@ -48,11 +48,11 @@ void main() {
 
       await tester.tap(find.text('自选').last);
       await tester.pumpAndSettle();
-      expect(find.byType(AppBar), findsOneWidget);
-      expect(find.byTooltip('添加基金'), findsOneWidget);
+      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.byTooltip('清理已取消交易'), findsNothing);
       expect(find.textContaining('已添加基金'), findsNothing);
-      await tester.tap(find.byTooltip('添加基金'));
+      await tester.tap(find.byType(FloatingActionButton));
       await tester.pumpAndSettle();
       expect(find.text('基金名称或代码'), findsOneWidget);
       await tester.pageBack();

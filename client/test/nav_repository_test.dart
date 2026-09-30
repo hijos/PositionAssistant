@@ -58,7 +58,7 @@ void main() {
       () async => repository,
       client: _clientWithRows({
         '539001': [
-          {'FSRQ': '2026-09-28', 'DWJZ': '3.5'},
+          {'FSRQ': '2026-09-28', 'DWJZ': '3.5', 'JZZZL': '1.25'},
         ],
         '000001': [
           {'FSRQ': '2026-09-28', 'DWJZ': '1.5'},
@@ -71,12 +71,14 @@ void main() {
     final updated = await repository.get('funds', '539001');
     expect(updated?['nav'], 3.5);
     expect(updated?['navDate'], '2026-09-28');
+    expect(updated?['dailyChange'], 1.25);
     expect(updated?['navSource'], 'eastmoney-local-nav-v1');
     final snapshot = await repository.get(
       'navSnapshots',
       '539001:2026-09-28:remote',
     );
     expect(snapshot?['nav'], 3.5);
+    expect(snapshot?['dailyChange'], 1.25);
     // A fund that is already current stays untouched but gains no regression.
     final current = await repository.get('funds', '000001');
     expect(current?['nav'], 1.5);

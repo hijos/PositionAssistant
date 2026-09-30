@@ -116,6 +116,8 @@ class LocalNavRepository {
         ...current,
         'nav': snapshot['nav'],
         'navDate': snapshot['navDate'],
+        if (snapshot['dailyChange'] != null)
+          'dailyChange': snapshot['dailyChange'],
         'navSource': snapshot['source'] ?? 'local-nav-cache',
       });
     }
@@ -144,6 +146,7 @@ class LocalNavRepository {
       final raw = rows.first as Map;
       final navDate = '${raw['FSRQ'] ?? ''}';
       final nav = num.tryParse('${raw['DWJZ']}');
+      final dailyChange = num.tryParse('${raw['JZZZL']}');
       if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(navDate) ||
           nav == null ||
           !nav.isFinite ||
@@ -155,6 +158,8 @@ class LocalNavRepository {
         'fundCode': code,
         'navDate': navDate,
         'nav': nav,
+        if (dailyChange != null && dailyChange.isFinite)
+          'dailyChange': dailyChange.toDouble(),
         'source': 'eastmoney-local-nav-v1',
       };
     } catch (_) {

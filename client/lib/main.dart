@@ -422,81 +422,76 @@ class _HomeShellState extends State<HomeShell> {
     super.dispose();
   }
 
-  /// The funds the user has added; deletion is reachable by long press only.
+  /// The funds the user has added; deletion is reachable by long press or a
+  /// trailing swipe, both routed through [removeFund] for confirmation.
   /// Kept separate from [holdingsCard] because a fund can exist without any
   /// confirmed transaction and therefore without a position.
-  Widget fundList(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (savedFunds == null)
+  Widget fundList(BuildContext context) {
+    final future = savedFunds;
+    if (future == null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton(
+          onPressed: () => setState(reloadFunds),
+          child: Text(
+            !localMode && remoteFunds == null ? '请先登录远端账号' : '读取自选基金',
+          ),
+        ),
+      );
+    }
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: LinearProgressIndicator(),
+          );
+        }
+        if (snapshot.hasError) {
+          return TextButton(
+            onPressed: () => setState(reloadFunds),
+            child: const Text('基金列表读取失败，点击重试'),
+          );
+        }
+        final funds = snapshot.data ?? const <Map<String, dynamic>>[];
+        if (funds.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('暂无自选基金'),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: openSearch,
+                  icon: const Icon(Icons.add),
+                  label: const Text('添加第一只基金'),
+                ),
+              ],
+            ),
+          );
+        }
+        final dividerColor = Theme.of(context).dividerColor;
+        return Column(
+          children: [
+            for (var i = 0; i < funds.length; i++) ...[
+              if (i > 0) Divider(height: 1, color: dividerColor),
+              FundListTile(fund: funds[i], onRemove: removeFund),
+            ],
+            const SizedBox(height: 4),
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () => setState(reloadFunds),
-                child: Text(
-                  !localMode && remoteFunds == null ? '请先登录远端账号' : '读取自选基金',
-                ),
+              child: Text(
+                '长按或左滑基金可删除',
+                style: Theme.of(context).textTheme.bodySmall,
               ),
-            )
-          else
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: savedFunds,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: LinearProgressIndicator(),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return TextButton(
-                    onPressed: () => setState(reloadFunds),
-                    child: const Text('基金列表读取失败，点击重试'),
-                  );
-                }
-                final funds = snapshot.data ?? const <Map<String, dynamic>>[];
-                if (funds.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('暂无自选基金'),
-                        const SizedBox(height: 8),
-                        OutlinedButton.icon(
-                          onPressed: openSearch,
-                          icon: const Icon(Icons.add),
-                          label: const Text('添加第一只基金'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                return Column(
-                  children: [
-                    for (final fund in funds)
-                      // Same dense rhythm as [HoldingListItem]: the rows sit
-                      // back to back instead of leaving a tile's worth of gap.
-                      FundListTile(fund: fund, onRemove: removeFund),
-                    const SizedBox(height: 4),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        '长按基金可删除',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
-                );
-              },
             ),
-        ],
-      ),
-    ),
-  );
+          ],
+        );
+      },
+    );
+  }
 
   Widget holdingOverview() {
     final future = savedHoldings;
@@ -661,12 +656,13 @@ class _HomeShellState extends State<HomeShell> {
     Icons.list_alt,
     Icons.settings_outlined,
   ];
-  // 「持仓」「设置」两页自身带有标题内容，不再重复显示顶栏。
-  static const tabsWithoutAppBar = {0, 4};
+  // 「持仓」「自选」「设置」三页自身带有内容区或悬浮操作，不再重复显示顶栏。
+  static const tabsWithoutAppBar = {0, 2, 4};
 
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: _appBar(),
+    floatingActionButton: selected == 2 ? _watchlistFab() : null,
     body: SafeArea(
       child: selected == 3
           ? (localMode || remoteQuotas != null
@@ -735,22 +731,23 @@ class _HomeShellState extends State<HomeShell> {
               ),
               const SizedBox(width: 8),
             ]
-          : selected == 2
-          ? [
-              Semantics(
-                button: true,
-                label: '添加基金',
-                child: IconButton.filledTonal(
-                  onPressed: openSearch,
-                  tooltip: '添加基金',
-                  icon: const Icon(Icons.add),
-                ),
-              ),
-              const SizedBox(width: 8),
-            ]
           : null,
     );
   }
+
+  Widget _watchlistFab() => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Semantics(
+      button: true,
+      label: '添加基金',
+      child: FloatingActionButton.small(
+        heroTag: 'add-fund-fab',
+        tooltip: '添加基金',
+        onPressed: openSearch,
+        child: const Icon(Icons.add),
+      ),
+    ),
+  );
 
   Widget _transactionBody() {
     final repository = currentTransactions;
@@ -1191,13 +1188,62 @@ class FundListTile extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    visualDensity: VisualDensity.compact,
-    title: Text('${fund['name'] ?? fund['code']}'),
-    subtitle: Text('${fund['code']} · ${fund['type']}'),
-    onLongPress: () => openActions(context),
-  );
+  Widget build(BuildContext context) {
+    final dailyChange = parseNumberOrNull(fund['dailyChange']);
+    final name = '${fund['name'] ?? fund['code']}';
+    final code = '${fund['code'] ?? '—'}';
+    return Dismissible(
+      key: ValueKey('watchlist-$code'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) async {
+        await openActions(context);
+        return false;
+      },
+      background: Container(
+        color: Theme.of(context).colorScheme.error,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.onError),
+      ),
+      child: InkWell(
+        onLongPress: () => openActions(context),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(code, style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                dailyChange == null
+                    ? '—'
+                    : '${dailyChange >= 0 ? '+' : ''}${dailyChange.toStringAsFixed(2)}%',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: profitColor(context, dailyChange),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class HoldingListItem extends StatelessWidget {

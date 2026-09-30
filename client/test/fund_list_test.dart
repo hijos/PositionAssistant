@@ -28,9 +28,26 @@ void main() {
   testWidgets('the row exposes no delete button', (tester) async {
     await pumpRow(tester, []);
     expect(find.text('天弘纳斯达克100指数发起(QDII)A'), findsOneWidget);
-    expect(find.text('018043 · 指数型-海外股票'), findsOneWidget);
+    expect(find.text('018043'), findsOneWidget);
+    expect(find.text('指数型-海外股票'), findsNothing);
+    expect(find.text('—'), findsOneWidget);
     expect(find.byIcon(Icons.delete_outline), findsNothing);
     expect(find.byType(IconButton), findsNothing);
+  });
+
+  testWidgets('the row shows the latest daily change when available',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FundListTile(
+            fund: {...fund, 'dailyChange': 1.25},
+            onRemove: (_) async {},
+          ),
+        ),
+      ),
+    );
+    expect(find.text('+1.25%'), findsOneWidget);
   });
 
   testWidgets(
