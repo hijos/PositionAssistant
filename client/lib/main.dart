@@ -61,7 +61,6 @@ class _HomeShellState extends State<HomeShell> {
   RemoteHoldingRepository? remoteHoldings;
   Future<List<Map<String, dynamic>>>? savedFunds;
   Future<List<Map<String, dynamic>>>? savedHoldings;
-  Future<List<Map<String, dynamic>>>? savedPlans;
   late final LocalPlanRepository localPlans = LocalPlanRepository(
     () => localStorage ??= openLocalRepository(),
   );
@@ -104,8 +103,6 @@ class _HomeShellState extends State<HomeShell> {
     savedFunds?.ignore();
     savedHoldings = currentHoldings?.list();
     savedHoldings?.ignore();
-    savedPlans = localMode ? localPlans.list() : null;
-    savedPlans?.ignore();
   }
 
   /// The holdings view derives formal market value and profit from the
@@ -732,20 +729,7 @@ class _HomeShellState extends State<HomeShell> {
         return [
           holdingOverview(),
           holdingsCard(context),
-          FutureBuilder<List<Map<String, dynamic>>>(
-            future: savedPlans,
-            builder: (context, snapshot) => SectionCard(
-              title: '定投计划',
-              description: snapshot.hasError
-                  ? '定投计划读取失败'
-                  : !snapshot.hasData
-                  ? '正在读取…'
-                  : snapshot.data!.isEmpty
-                  ? '暂无定投计划'
-                  : '已有 ${snapshot.data!.length} 个计划',
-            ),
-          ),
-          _entry(context, '定投计划编辑'),
+          _entry(context, '定投计划'),
         ];
       case 2:
         return [fundList(context)];
@@ -792,7 +776,6 @@ class _HomeShellState extends State<HomeShell> {
   Widget _entry(BuildContext context, String title) => Card(
     child: ListTile(
       title: Text(title),
-      subtitle: const Text('页面预览'),
       trailing: const Icon(Icons.chevron_right),
       onTap: title == '基金搜索与添加'
           ? openSearch
@@ -810,7 +793,7 @@ class _HomeShellState extends State<HomeShell> {
           ? logout
           : title == '数据导入'
           ? openImport
-          : title == '定投计划编辑' && defaultTargetPlatform == TargetPlatform.android
+          : title == '定投计划' && defaultTargetPlatform == TargetPlatform.android
           ? openPlans
           : title == '额度详情与手动修改' &&
                 defaultTargetPlatform == TargetPlatform.android

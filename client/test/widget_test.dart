@@ -64,13 +64,14 @@ void main() {
       // the app bar there; the same holds for the settings tab below.
       expect(find.byType(AppBar), findsNothing);
       await tester.scrollUntilVisible(
-        find.text('定投计划编辑'),
+        find.text('定投计划'),
         160,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.tap(find.text('定投计划编辑'));
+      await tester.tap(find.text('定投计划'));
       await tester.pumpAndSettle();
       expect(find.text('定投计划'), findsOneWidget);
+      expect(find.text('页面预览'), findsNothing);
       await tester.pageBack();
       await tester.pumpAndSettle();
 
