@@ -13,7 +13,7 @@
 - F49 结果：done；持仓概览改为全宽专用卡片（四行标签/数值对齐、预估收益含说明弹窗）、基金行改为左右两列紧凑布局，统一 `￥`/两位小数/中文括号格式，并补齐远端与服务端的 `estimatedMarketValue`；本机 `flutter analyze` 无问题、`flutter test` 58 项通过；未做真机手工验收与 APK 重打包。
 - F51 结果：done；底部导航改为交易记录直达、自选基金和持仓内定投计划，新增自选添加基金与当前持仓添加交易入口；`flutter analyze` 通过，完整 `flutter test` 61 项通过。
 - F52 结果：done；自选基金行移除行内垃圾桶按钮，改为长按弹出删除操作面板（删除仍保留二次确认对话框）；行渲染抽为公开组件 `FundListTile` 并新增 4 项专项测试；`flutter analyze` 无问题，完整 `flutter test` 65 项通过。
-- 用户追加（无队列编号）结果：done；顶栏标题去掉「持仓助手 · 」前缀，「持仓」「设置」两个 Tab 不再显示顶栏；`flutter analyze` 无问题，完整 `flutter test` 65 项通过。
+- 用户追加（无队列编号）结果：done；顶栏标题去掉「持仓助手 · 」前缀，「持仓」「设置」两个 Tab 不再显示顶栏；`flutter analyze` 无问题，完整 `flutter test` 65 项通过；已提交并打成 release APK（`client\build\app\outputs\flutter-apk\持仓助手.apk`）。
 - 下一任务：F44 Web 与 Android 远端一致性验收。
 - 当前阻塞：无 F48 阻塞；既有 3 项服务端测试失败（`test/catalog.test.js` 缓存时间戳、`test/plans.test.js` 两项）已在未修改的 HEAD 上复现，属本次改动前的缺口。Docker/PostgreSQL 运行验证留待用户 Linux 服务器环境完成。
 - 依据文档：[`functions.md`](../functions.md)
@@ -790,7 +790,9 @@
   - 「持仓」「设置」两个 Tab 不再显示顶栏：新增 `tabsWithoutAppBar = {0, 4}`，顶栏从 `build` 抽为 `_appBar()`，命中集合时返回 `null`。持仓页顶部直接是持仓概览卡片，设置页顶部直接是数据模式卡片；交易页的「清理已取消交易」与自选页的「添加基金」按钮位置不变，`body` 原有 `SafeArea` 保证去顶栏后内容不侵入状态栏。
 - 已确定约定：底部导航用两字简称、顶栏用页面全称，两者各用一份常量数组，不再复用同一数组做下标特判；「持仓」「设置」页自身带标题内容，不重复显示顶栏。
 - 测试命令及结果：`flutter analyze` 无问题；完整 `flutter test` 65 项通过（320×640、1280×800 两种尺寸，无溢出异常）。`client/test/widget_test.dart` 新增 `find.byType(AppBar)` 断言：交易/自选/额度 `findsOneWidget`，持仓/设置 `findsNothing`。
+- APK：release 构建成功（Gradle 45.5 秒，增量、未执行 `flutter clean`），唯一产物为 `client\build\app\outputs\flutter-apk\持仓助手.apk`，50.61 MB / 67 个条目，重复的 `app-release.apk` 已删除。打包内核验：解包 `lib/arm64-v8a/libapp.so` 后旧字面量「持仓助手 · 」已不存在，`交易记录`、`持仓概览` 仍在，确认包内为本次改动后的代码。
 - 未覆盖或遗留：未在 Android 真机手工确认去顶栏后的状态栏间距与滚动观感；release 包仍使用项目当前默认（debug）签名。
+  - 本机 `%USERPROFILE%\.gradle` 缺 `gradle-9.3.1-all` 分发包且写 `.lck` 时报“拒绝访问”，直接 `flutter build apk` 会失败；本次按历史做法设置 `GRADLE_USER_HOME=<仓库>\.tooling\gradle-home`（内含已缓存的 9.3.1 分发包）后构建成功。后续会话打包前先确认该环境变量。
 - 下一任务：F44 Web 与 Android 远端一致性验收。
 - 更新时间：2026-09-30。
 
