@@ -119,6 +119,9 @@ class _HomeShellState extends State<HomeShell> {
     }, onError: (_) {});
   }
 
+  /// Removes a watchlist entry after the long-press sheet ([FundListTile]) has
+  /// picked it. Kept as the destructive step so the confirmation dialog stays
+  /// the single owner of the "transactions are not deleted" warning.
   Future<void> removeFund(Map<String, dynamic> fund) async {
     final repository = currentFunds;
     if (repository == null) return;
@@ -364,24 +367,22 @@ class _HomeShellState extends State<HomeShell> {
     super.dispose();
   }
 
-  /// The funds the user has added, with the delete affordance. Kept separate
-  /// from [holdingsCard] because a fund can exist without any confirmed
-  /// transaction and therefore without a position.
+  /// The funds the user has added; deletion is reachable by long press only.
+  /// Kept separate from [holdingsCard] because a fund can exist without any
+  /// confirmed transaction and therefore without a position.
   Widget fundList(BuildContext context) => Card(
     child: Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('已添加基金', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
           if (savedFunds == null)
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(
                 onPressed: () => setState(reloadFunds),
                 child: Text(
-                  !localMode && remoteFunds == null ? '请先登录远端账号' : '读取已添加基金',
+                  !localMode && remoteFunds == null ? '请先登录远端账号' : '读取自选基金',
                 ),
               ),
             )
@@ -403,9 +404,20 @@ class _HomeShellState extends State<HomeShell> {
                 }
                 final funds = snapshot.data ?? const <Map<String, dynamic>>[];
                 if (funds.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text('尚未添加基金'),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('暂无自选基金'),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: openSearch,
+                          icon: const Icon(Icons.add),
+                          label: const Text('添加第一只基金'),
+                        ),
+                      ],
+                    ),
                   );
                 }
                 return Column(
@@ -413,17 +425,15 @@ class _HomeShellState extends State<HomeShell> {
                     for (final fund in funds)
                       // Same dense rhythm as [HoldingListItem]: the rows sit
                       // back to back instead of leaving a tile's worth of gap.
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                        title: Text('${fund['name'] ?? fund['code']}'),
-                        subtitle: Text('${fund['code']} · ${fund['type']}'),
-                        trailing: IconButton(
-                          tooltip: '删除基金',
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => removeFund(fund),
-                        ),
+                      FundListTile(fund: fund, onRemove: removeFund),
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '长按基金可删除',
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
+                    ),
                   ],
                 );
               },
@@ -521,7 +531,25 @@ class _HomeShellState extends State<HomeShell> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('当前持仓', style: Theme.of(context).textTheme.titleMedium),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '当前持仓',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: openTransactionEntry,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('添加持仓'),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           if (savedHoldings == null)
             const Padding(
@@ -568,29 +596,47 @@ class _HomeShellState extends State<HomeShell> {
     ),
   );
 
-  static const titles = ['持仓', '交易', '定投', '额度', '设置'];
+  static const titles = ['持仓', '交易', '自选', '额度', '设置'];
   static const icons = [
     Icons.account_balance_wallet_outlined,
     Icons.swap_horiz,
-    Icons.event_repeat,
+    Icons.star_outline,
     Icons.list_alt,
     Icons.settings_outlined,
   ];
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text('持仓助手 · ${titles[selected]}')),
+    appBar: AppBar(
+      title: Text(selected == 1 ? '交易记录' : '持仓助手 · ${titles[selected]}'),
+      actions: selected == 2
+          ? [
+              Semantics(
+                button: true,
+                label: '添加基金',
+                child: IconButton.filledTonal(
+                  onPressed: openSearch,
+                  tooltip: '添加基金',
+                  icon: const Icon(Icons.add),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ]
+          : null,
+    ),
     body: SafeArea(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 960),
-          child: ListView(
-            key: ValueKey(selected),
-            padding: const EdgeInsets.all(16),
-            children: _content(context),
-          ),
-        ),
-      ),
+      child: selected == 1
+          ? _transactionBody()
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 960),
+                child: ListView(
+                  key: ValueKey(selected),
+                  padding: const EdgeInsets.all(16),
+                  children: _content(context),
+                ),
+              ),
+            ),
     ),
     bottomNavigationBar: NavigationBar(
       selectedIndex: selected,
@@ -602,24 +648,42 @@ class _HomeShellState extends State<HomeShell> {
     ),
   );
 
+  Widget _transactionBody() {
+    final repository = currentTransactions;
+    if (repository == null) {
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 960),
+          child: Card(
+            margin: const EdgeInsets.all(16),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('请先登录远端账号'),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: login,
+                    icon: const Icon(Icons.login),
+                    label: const Text('登录'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return TransactionHistoryPage(repository: repository, embedded: true);
+  }
+
   List<Widget> _content(BuildContext context) {
     switch (selected) {
       case 0:
         return [
           holdingOverview(),
           holdingsCard(context),
-          fundList(context),
-          _entry(context, '基金搜索与添加'),
-          _entry(context, '持仓详情'),
-        ];
-      case 1:
-        return [
-          const SectionCard(title: '交易记录', description: '暂无交易记录'),
-          _entry(context, '交易录入'),
-          _entry(context, '交易详情'),
-        ];
-      case 2:
-        return [
           FutureBuilder<List<Map<String, dynamic>>>(
             future: savedPlans,
             builder: (context, snapshot) => SectionCard(
@@ -635,6 +699,8 @@ class _HomeShellState extends State<HomeShell> {
           ),
           _entry(context, '定投计划编辑'),
         ];
+      case 2:
+        return [fundList(context)];
       case 3:
         return [
           const SectionCard(title: '纳斯达克100', description: '暂无额度数据'),
@@ -860,10 +926,7 @@ class HoldingOverviewCard extends StatelessWidget {
                 ),
                 color: profitColor(context, data.totalProfit),
               ),
-              _OverviewRow(
-                label: '总成本',
-                value: formatMoney(data.totalCost),
-              ),
+              _OverviewRow(label: '总成本', value: formatMoney(data.totalCost)),
               _OverviewRow(
                 label: '预估市值',
                 value: formatMoney(data.totalEstimatedMarketValue),
@@ -983,6 +1046,59 @@ class _OverviewRow extends StatelessWidget {
 /// Left column: fund name, code with shares, cost. Right column: market value,
 /// profit with rate, estimated profit. The right column keeps a fixed width so
 /// the figures are never squeezed, and the name ellipsizes instead of wrapping.
+/// A watchlist row.
+///
+/// The row keeps no visible delete button so the list stays readable; removal
+/// lives behind a long press, which opens a sheet naming the fund before the
+/// destructive action is offered.
+class FundListTile extends StatelessWidget {
+  const FundListTile({required this.fund, required this.onRemove, super.key});
+
+  final Map<String, dynamic> fund;
+
+  /// Runs after the user picks the destructive action in the sheet.
+  final Future<void> Function(Map<String, dynamic> fund) onRemove;
+
+  Future<void> openActions(BuildContext context) async {
+    final errorColor = Theme.of(context).colorScheme.error;
+    final remove = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text('${fund['name'] ?? fund['code']}'),
+              subtitle: Text('${fund['code']} · ${fund['type']}'),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: errorColor),
+              title: Text('删除基金', style: TextStyle(color: errorColor)),
+              onTap: () => Navigator.of(sheetContext).pop(true),
+            ),
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text('取消'),
+              onTap: () => Navigator.of(sheetContext).pop(false),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (remove == true) await onRemove(fund);
+  }
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    visualDensity: VisualDensity.compact,
+    title: Text('${fund['name'] ?? fund['code']}'),
+    subtitle: Text('${fund['code']} · ${fund['type']}'),
+    onLongPress: () => openActions(context),
+  );
+}
+
 class HoldingListItem extends StatelessWidget {
   const HoldingListItem({required this.item, required this.onTap, super.key});
 

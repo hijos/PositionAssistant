@@ -63,12 +63,14 @@ class TransactionHistoryPage extends StatefulWidget {
     required this.repository,
     this.fundCode,
     this.pageTitle = '交易记录',
+    this.embedded = false,
     super.key,
   });
 
   final TransactionRepository repository;
   final String? fundCode;
   final String pageTitle;
+  final bool embedded;
 
   @override
   State<TransactionHistoryPage> createState() => _TransactionHistoryPageState();
@@ -259,33 +261,44 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   @override
   Widget build(BuildContext context) {
     final cancelled = _cancelled;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.pageTitle),
-        actions: [
-          IconButton(
-            onPressed: busy || cancelled.isEmpty ? null : clearCancelled,
-            tooltip: '清理已取消交易',
-            icon: busy
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.delete_sweep_outlined),
-          ),
-        ],
-      ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : error != null && items.isEmpty
-          ? Center(
-              child: FilledButton(
-                onPressed: reload,
-                child: const Text('读取失败，点击重试'),
-              ),
+    final action = IconButton(
+      onPressed: busy || cancelled.isEmpty ? null : clearCancelled,
+      tooltip: '清理已取消交易',
+      icon: busy
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : _list(sortTransactions(items)),
+          : const Icon(Icons.delete_sweep_outlined),
+    );
+    final body = loading
+        ? const Center(child: CircularProgressIndicator())
+        : error != null && items.isEmpty
+        ? Center(
+            child: FilledButton(
+              onPressed: reload,
+              child: const Text('读取失败，点击重试'),
+            ),
+          )
+        : _list(sortTransactions(items));
+    if (!widget.embedded) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.pageTitle), actions: [action]),
+        body: body,
+      );
+    }
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 8, 0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [action],
+          ),
+        ),
+        Expanded(child: body),
+      ],
     );
   }
 
