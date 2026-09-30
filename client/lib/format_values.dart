@@ -43,13 +43,14 @@ String formatRate(dynamic value) {
 /// `8` -> `8.00`, used for shares and net asset values.
 String formatNumber(dynamic value) => parseNumber(value).toStringAsFixed(2);
 
-/// `56.1`, `0.0274` -> `￥56.10（2.74%）`; `—` when the amount is unknown.
+/// `56.1`, `0.0274` -> `￥56.10 (2.74%)`; `—` when the amount is unknown.
 ///
-/// Chinese parentheses are used consistently across the overview card, the
-/// holdings list and the holding detail page.
+/// Half-width parentheses with a space before the opening bracket (because a
+/// digit always precedes it) are used consistently across the overview card,
+/// the holdings list and the holding detail page.
 String formatMoneyWithRate(dynamic amount, dynamic rate) {
   if (parseNumberOrNull(amount) == null) return _placeholderDash;
-  return '${formatMoney(amount)}（${formatRate(rate)}）';
+  return '${formatMoney(amount)} (${formatRate(rate)})';
 }
 
 /// Gain color for this project: red for a rise, green for a fall, plain text

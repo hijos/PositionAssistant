@@ -125,11 +125,11 @@ void main() {
     expect(find.text('总收益'), findsOneWidget);
     expect(find.text('预估市值'), findsOneWidget);
     expect(find.text('预估收益'), findsOneWidget);
-    // Amounts keep two decimals and rates use Chinese parentheses.
+    // Amounts keep two decimals and rates use half-width parentheses.
     expect(find.text(money('2106.56')), findsOneWidget);
-    expect(find.text('${money('56.10')}（2.74%）'), findsOneWidget);
+    expect(find.text('${money('56.10')} (2.74%)'), findsOneWidget);
     expect(find.text(money('2140.20')), findsOneWidget);
-    expect(find.text('${money('89.74')}（4.38%）'), findsOneWidget);
+    expect(find.text('${money('89.74')} (4.38%)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -178,7 +178,7 @@ void main() {
     );
     // Both value rows and both profit rows render a real ￥0.00, not a dash.
     expect(find.text(money('0.00')), findsNWidgets(2));
-    expect(find.text('${money('0.00')}（0.00%）'), findsNWidgets(2));
+    expect(find.text('${money('0.00')} (0.00%)'), findsNWidgets(2));
     expect(find.text('—'), findsNothing);
   });
 
@@ -246,8 +246,8 @@ void main() {
     expect(find.text('539001  310.96份'), findsOneWidget);
     expect(find.text('成本 ${money('1050.00')}'), findsOneWidget);
     expect(find.text(money('1093.74')), findsOneWidget);
-    expect(find.text('${money('43.74')}（4.17%）'), findsOneWidget);
-    expect(find.text('预估 ${money('70.50')}（6.71%）'), findsOneWidget);
+    expect(find.text('${money('43.74')} (4.17%)'), findsOneWidget);
+    expect(find.text('预估 ${money('70.50')} (6.71%)'), findsOneWidget);
     // The redundant wording removed by this change.
     expect(find.textContaining('正式收益'), findsNothing);
     expect(find.textContaining('正式市值'), findsNothing);
@@ -283,7 +283,7 @@ void main() {
         .style!
         .fontSize!;
     final profitSize = tester
-        .widget<Text>(find.text('${money('43.74')}（4.17%）'))
+        .widget<Text>(find.text('${money('43.74')} (4.17%)'))
         .style!
         .fontSize!;
     expect(valueSize, greaterThan(profitSize));
@@ -317,7 +317,7 @@ void main() {
     );
     final icon = find.byIcon(Icons.info_outline);
     final label = find.text('预估收益');
-    final value = find.text('${money('89.74')}（4.38%）');
+    final value = find.text('${money('89.74')} (4.38%)');
     expect(icon, findsOneWidget);
     // Icon, then label, then the value: left to right in that order.
     expect(tester.getTopLeft(icon).dx, lessThan(tester.getTopLeft(label).dx));
@@ -382,11 +382,11 @@ void main() {
       _k320,
     );
     final gain = tester
-        .widget<Text>(find.text('${money('43.74')}（4.17%）'))
+        .widget<Text>(find.text('${money('43.74')} (4.17%)'))
         .style!
         .color;
     final loss = tester
-        .widget<Text>(find.text('${money('-100.00')}（-10.00%）'))
+        .widget<Text>(find.text('${money('-100.00')} (-10.00%)'))
         .style!
         .color;
     expect(gain, Colors.red.shade700);
@@ -430,7 +430,7 @@ void main() {
       _k320,
     );
     expect(find.text('预估 —'), findsOneWidget);
-    expect(find.text('${money('43.74')}（4.17%）'), findsOneWidget);
+    expect(find.text('${money('43.74')} (4.17%)'), findsOneWidget);
   });
 
   testWidgets('formal data missing renders dashes, never zeros', (
