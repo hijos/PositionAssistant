@@ -1210,6 +1210,7 @@ class FundListTile extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -1222,20 +1223,29 @@ class FundListTile extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 4),
-                    Text(code, style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      code,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontSize: 11,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
-              Text(
-                dailyChange == null
-                    ? '—'
-                    : '${dailyChange >= 0 ? '+' : ''}${dailyChange.toStringAsFixed(2)}%',
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: profitColor(context, dailyChange),
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  dailyChange == null
+                      ? '—'
+                      : '${dailyChange >= 0 ? '+' : ''}${dailyChange.toStringAsFixed(2)}%',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: profitColor(context, dailyChange),
+                  ),
                 ),
               ),
             ],
