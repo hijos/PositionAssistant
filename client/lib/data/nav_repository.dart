@@ -99,17 +99,24 @@ class LocalNavRepository {
     for (final fund in funds) {
       final code = fund['code'];
       if (code is! String || !RegExp(r'^\d{6}$').hasMatch(code)) continue;
-      final snapshot = await _fetchLatest(code);
-      if (snapshot == null) continue;
-      await storage.put(
+      final fetched = await _fetchLatest(code);
+      if (fetched != null) {
+        await storage.put(
         'navSnapshots',
-        snapshot['id'] as String,
-        snapshot,
+        fetched['id'] as String,
+        fetched,
       );
+      }
       final current = await storage.get('funds', code);
       if (current == null) continue;
-      if ('${snapshot['navDate']}'.compareTo('${current['navDate'] ?? ''}') <
-          0) {
+      // A QDII NAV can lag a US close even when today's NAV request fails.
+      // Estimate from the newest known valuation date, not publication time.
+      final snapshot = fetched != null &&
+              '${fetched['navDate']}'.compareTo('${current['navDate'] ?? ''}') >= 0
+          ? fetched
+          : current;
+      if (num.tryParse('${snapshot['nav']}') == null ||
+          snapshot['navDate'] is! String) {
         continue;
       }
       await storage.put('funds', code, {
@@ -155,6 +162,7 @@ class LocalNavRepository {
         'estimateCoverage': 1.0,
         'estimateRuleVersion': 'qqq-fx-v1',
         'estimateBaseDate': navDate,
+        'estimateMarketDate': date,
         'estimateError': null,
         'estimateMethod': '按 QQQ + USD/CNY 组合涨跌估算（100%）；不含费用、分红与调仓',
       };
@@ -197,7 +205,7 @@ class LocalNavRepository {
         .get(Uri.parse(
           'https://query1.finance.yahoo.com/v8/finance/chart/$symbol'
           '?interval=1d&period1=$start&period2=$end',
-        ))
+        ), headers: {'User-Agent': 'Mozilla/5.0'})
         .timeout(const Duration(seconds: 10));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('行情请求失败');

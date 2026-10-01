@@ -139,8 +139,8 @@ void main() {
       'nav': 3.4,
       'navDate': '2026-09-27',
     });
-    final base = DateTime.utc(2026, 9, 28).millisecondsSinceEpoch ~/ 1000;
-    final latest = DateTime.utc(2026, 9, 29).millisecondsSinceEpoch ~/ 1000;
+    final base = DateTime.utc(2026, 9, 29).millisecondsSinceEpoch ~/ 1000;
+    final latest = DateTime.utc(2026, 9, 30).millisecondsSinceEpoch ~/ 1000;
     final nav = LocalNavRepository(
       () async => repository,
       client: MockClient((request) async {
@@ -172,7 +172,7 @@ void main() {
           jsonEncode({
             'Data': {
               'LSJZList': [
-                {'FSRQ': '2026-09-28', 'DWJZ': '3.5'},
+                {'FSRQ': '2026-09-29', 'DWJZ': '3.5'},
               ],
             },
           }),
@@ -188,6 +188,8 @@ void main() {
     expect(fund?['estimateCoverage'], 1.0);
     expect(fund?['estimateRuleVersion'], 'qqq-fx-v1');
     expect(fund?['estimateSource'], contains('QQQ + USD/CNY'));
+    expect(fund?['estimateBaseDate'], '2026-09-29');
+    expect(fund?['estimateMarketDate'], '2026-09-30');
   });
 }
 
