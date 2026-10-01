@@ -32,6 +32,21 @@ test('历史只有 fee 的交易仍按固定费用兼容', () => {
   assert.equal(result.shares, 50);
 });
 
+test('按持有金额和收益率录入会反推成本并按净值计算份额', () => {
+  const draft = validateTrade(trade({
+    entryMode: 'holding', amount: 0, shares: 0,
+    holdingAmount: 120, holdingReturnRate: 20,
+    feeMode: 'fixed', fixedFee: 0,
+    date: new Date().toLocaleDateString('en-CA', {timeZone: 'Asia/Shanghai'}),
+  }));
+  const result = calculate(draft, 3);
+  assert.equal(result.amount, 100);
+  assert.equal(result.shares, 40);
+  assert.equal(result.fee, 0);
+  assert.throws(() => validateTrade({...draft, type: 'sell'}), /仅支持买入/);
+  assert.throws(() => validateTrade({...draft, holdingReturnRate: -100}), /大于-100/);
+});
+
 test('交易输入校验支持费率或固定费用且拒绝混用', () => {
   const date = new Date().toLocaleDateString('en-CA', {timeZone: 'Asia/Shanghai'});
   const rate = validateTrade(trade({date, feeRate: 0.15}));

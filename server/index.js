@@ -20,11 +20,14 @@ async function fetchNav(code){
  return {...n,code,name:old.name||(db.fundCatalog||[]).find(f=>f.code===code)?.name||x?.name||code,source:'东方财富历史净值',sourceType:'official',sourceError:null,updatedAt:new Date().toISOString(),estimatedNav:proxySymbol(old.name||x?.name||'')&&x?.jzrq===n.navDate&&Number(x.gsz)>0?Number(x.gsz):null,estimateAt:proxySymbol(old.name||x?.name||'')?x?.gztime?.replace(' ','T')||null:null,estimateSource:proxySymbol(old.name||x?.name||'')?'东方财富第三方估值（非底层持仓自算）':null,estimateError,...underlying};
 }
 function validateTrade(b){
- if(!/^\d{6}$/.test(b.fundCode)||!['buy','sell'].includes(b.type)||!['amount','shares'].includes(b.entryMode)||!['before','after'].includes(b.cutoff))throw Error('交易参数无效');
+ if(!/^\d{6}$/.test(b.fundCode)||!['buy','sell'].includes(b.type)||!['amount','shares','holding'].includes(b.entryMode)||!['before','after'].includes(b.cutoff))throw Error('交易参数无效');
+ if(b.entryMode==='holding'&&b.type!=='buy')throw Error('持有金额录入仅支持买入');
  if(!/^\d{4}-\d{2}-\d{2}$/.test(b.date)||!Number.isFinite(Date.parse(b.date))||new Date(b.date).toISOString().slice(0,10)!==b.date||b.date>new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Shanghai'}))throw Error('交易日期无效');
- const rawValue=Number(b[b.entryMode]);if(!Number.isFinite(rawValue)||rawValue<=0)throw Error('金额或份额必须大于0');
+ const rawValue=Number(b.entryMode==='holding'?b.holdingAmount:b[b.entryMode]);if(!Number.isFinite(rawValue)||rawValue<=0)throw Error('金额或份额必须大于0');
  const value=Math.round((rawValue+Number.EPSILON)*100)/100;if(value<=0)throw Error('金额或份额最小精度为0.01');
- const requestedMode=b.feeMode==null?(b.fixedFee!=null||b.fee!=null?'fixed':'rate'):String(b.feeMode);
+ const holdingReturnRate=b.entryMode==='holding'?Number(b.holdingReturnRate):0;
+ if(b.entryMode==='holding'&&(!Number.isFinite(holdingReturnRate)||holdingReturnRate<=-100))throw Error('持有收益率必须大于-100%');
+ const requestedMode=b.entryMode==='holding'?'fixed':(b.feeMode==null?(b.fixedFee!=null||b.fee!=null?'fixed':'rate'):String(b.feeMode));
  if(!['rate','fixed'].includes(requestedMode))throw Error('手续费模式无效');
  let feeRate=null,fixedFee=0;
  if(requestedMode==='rate'){
@@ -39,7 +42,7 @@ function validateTrade(b){
  }
  const text=(value,max)=>{if(value==null)return '';if(typeof value!=='string'||value.trim().length>max)throw Error('交易备注或来源无效');return value.trim()};
  const clientRequestId=b.clientRequestId==null?'':text(b.clientRequestId,128);
- return {fundCode:b.fundCode,fundName:text(b.fundName,200),fundType:text(b.fundType,100),type:b.type,entryMode:b.entryMode,amount:b.entryMode==='amount'?value:0,shares:b.entryMode==='shares'?value:0,feeMode:requestedMode,feeRate,fixedFee,date:b.date,cutoff:b.cutoff,note:text(b.note,200),source:text(b.source,100),clientRequestId,status:'pending'};
+ return {fundCode:b.fundCode,fundName:text(b.fundName,200),fundType:text(b.fundType,100),type:b.type,entryMode:b.entryMode,amount:b.entryMode==='amount'?value:0,shares:b.entryMode==='shares'?value:0,holdingAmount:b.entryMode==='holding'?value:null,holdingReturnRate:b.entryMode==='holding'?holdingReturnRate:null,feeMode:requestedMode,feeRate, fixedFee,date:b.date,cutoff:b.cutoff,note:text(b.note,200),source:text(b.source,100),clientRequestId,status:'pending'};
 }
 function validatePlan(body={}) {
  const fundCode=String(body.fundCode||'').trim();
@@ -76,7 +79,7 @@ async function settle(t){
  }catch{return {...t,status:'pending',pendingReason:'净值来源暂时不可用，请稍后重试确认'};}
 }
 const catalogService=require('./catalog').configuredCatalogService();
-const quotaRules=require('./quotas');
+const quotaRules=require('./quotas'); const {createQuotaCollector}=require('./quota-sources'); const {directProfileForFund}=require('./quota-sources/direct-config');
 const {exportPackage}=require('./export'); const {summarizeImportPackage,replaceAccountData}=require('./import');
 async function getFundCatalog(){const snapshot=await catalogService.get();db.fundCatalog=snapshot.items;return snapshot.items}
 app.get('/api/fund-catalog',require('./catalog/route').catalogHandler(catalogService));
@@ -89,18 +92,28 @@ require('./market').installMarketRoutes(app, require('./market').configuredMarke
 const supplementalQuotaLimits={
  '021000':{limit:200,source:'南方基金限额公告',sourceType:'fund-manager-announcement',sourceUrl:'https://www.9fzt.com/detail/fund_021000_2_10777974.html'}
 }
-async function fetchFundQuota(fund,category){
- const r=await fetch(`https://fund.eastmoney.com/${fund.code}.html`,{headers:{'User-Agent':'Mozilla/5.0'}});if(!r.ok)throw Error('fund page '+r.status);
- const html=await r.text();return quotaRules.parseQuotaPage(html,fund,supplementalQuotaLimits);
+const quotaCollector=createQuotaCollector({ supplemental: supplementalQuotaLimits });
+async function fetchFundQuota(fund, category){
+ const enriched={...fund,category, ...directProfileForFund(fund,quotaRules.managerCode(fund))};
+ const collected=await quotaCollector.collect(enriched);
+ const distribution=collected.results.find(item=>item.channels?.distribution);
+ const direct=collected.results.find(item=>item.channels?.direct);
+ if(!distribution&&!direct) throw Error(collected.errors.map(item=>item.error).join('; ')||'no quota source');
+ const base=distribution||direct;
+ return quotaRules.normalizeQuota({...base, channels:{...(distribution?.channels||{}),...(direct?.channels||{})}, preferredChannel:quotaRules.preferredChannel({...(distribution?.channels||{}),...(direct?.channels||{})}), sourceErrors:collected.errors});
 }
-async function refreshQuotas(){
- const catalog=await getFundCatalog();const candidates=catalog.filter(quotaRules.isCandidate).slice(0,80);
- const settled=await Promise.allSettled(candidates.map(f=>fetchFundQuota(f,f.category)));const fresh=settled.filter(x=>x.status==='fulfilled').map(x=>x.value).filter(x=>x.status!=='场内交易'&&!/美元|美钞|美汇/.test(x.name));if(!fresh.length)throw Error('no quota records');
- db.quotas=quotaRules.mergeAutomaticQuotas(fresh,db.quotas||[]);save();return db.quotas
+async function refreshQuotas(ownerId=null){
+ const catalog=await getFundCatalog(); const candidates=catalog.filter(quotaRules.isCandidate).slice(0,80);
+ const settled=await Promise.allSettled(candidates.map(f=>fetchFundQuota(f,quotaRules.classifyFund(f.name))));
+ const fresh=settled.filter(x=>x.status==='fulfilled').map(x=>x.value).filter(x=>x.status!=='场内交易'&&!/美元|美钞|美汇/.test(x.name));
+ if(!fresh.length) throw Error('no quota records');
+ db.quotas=quotaRules.mergeAutomaticQuotas(fresh,db.quotas||[]); save();
+ const visible=quotaRules.visibleQuotas(db.quotas||[],ownerId);
+ return {items:visible,summary:{updated:fresh.length,distributionUpdated:fresh.filter(x=>x.channels?.distribution).length,directUpdated:fresh.filter(x=>x.channels?.direct).length,directUnavailable:fresh.filter(x=>!x.channels?.direct).length,failed:settled.filter(x=>x.status==='rejected').length}};
 }app.post('/api/auth/register',(req,res)=>{try{const {email,passwordHash}=validateRegistration(req.body?.email,req.body?.password);if(db.users.some(x=>x.email===email))return res.status(409).json({error:'email exists'});const u={id:uid(),email,passwordHash};db.users.push(u);save();res.status(201).json({id:u.id,email:u.email})}catch(e){res.status(400).json({error:e.message})}});app.post('/api/auth/login',(req,res)=>{const email=String(req.body?.email||'').trim().toLowerCase();const u=db.users.find(x=>x.email===email);if(!u||!verifyPassword(req.body?.password,u.passwordHash))return res.status(401).json({error:'invalid credentials'});const token=crypto.randomBytes(32).toString('base64url');sessions.set(token,u.id);res.json({token,userId:u.id,email:u.email})});app.post('/api/auth/logout',(req,res)=>{const match=String(req.headers.authorization||'').match(/^Bearer\s+(.+)$/i);if(match)sessions.delete(match[1].trim());res.status(204).end()});
 require('./funds').installFundRoutes(app,{user,catalog:catalogService,store:require('./funds').configuredFundStore()});
 app.get('/api/funds/search',require('./catalog/search').searchHandler(catalogService));
-app.post('/api/quotas/refresh',async(req,res)=>{try{await refreshQuotas();res.json({items:quotaRules.visibleQuotas(db.quotas||[],user(req)),source:'东方财富基金详情页',updatedAt:new Date().toISOString()})}catch(e){res.status(502).json({error:'额度数据源暂时不可用',detail:e.message,items:quotaRules.visibleQuotas(db.quotas||[],user(req))})}});
+app.post('/api/quotas/refresh',async(req,res)=>{try{const result=await refreshQuotas(user(req));res.json({...result,source:'多渠道额度来源',updatedAt:new Date().toISOString()})}catch(e){res.status(502).json({error:'额度数据源暂时不可用',detail:e.message,items:quotaRules.visibleQuotas(db.quotas||[],user(req))})}});
 app.get('/api/funds',async(req,res)=>{for(const f of db.funds){if(!f.name)f.name=(db.fundCatalog||[]).find(x=>x.code===f.code)?.name||f.code}const refresh=req.query.refresh==='1';if(refresh){for(const f of db.funds){try{const latest=await fetchNav(f.code);Object.assign(f,latest);if(!f.name)f.name=(db.fundCatalog||[]).find(x=>x.code===f.code)?.name||f.code}catch(e){f.source=f.source||'缓存数据';f.sourceType='cached';f.sourceError='暂时无法更新';f.updatedAt=f.updatedAt||null}}save()}res.json(db.funds)});
 app.get('/api/funds/:code/nav',async(req,res)=>{try{const n=await fetchNav(req.params.code);const f=db.funds.find(x=>x.code===req.params.code);if(f){Object.assign(f,n);if(!f.name)f.name=(db.fundCatalog||[]).find(x=>x.code===f.code)?.name||f.code}else db.funds.push(n);save();res.json(n)}catch(e){res.status(502).json({error:'基金数据源暂时不可用',detail:e.message})}});
 app.use('/api/transactions',(req,res,next)=>{if(!user(req))return res.sendStatus(401);next()});app.use('/api/plans',(req,res,next)=>{if(!user(req))return res.sendStatus(401);next()});app.use('/api/holdings',(req,res,next)=>{if(!user(req))return res.sendStatus(401);next()});app.get('/api/transactions',(req,res)=>res.json(db.transactions.filter(t=>t.userId===user(req))));
@@ -187,16 +200,21 @@ app.get('/api/quotas',(req,res)=>res.json(quotaRules.visibleQuotas(db.quotas||[]
 app.put('/api/quotas/:code',(req,res)=>{
  const ownerId=user(req); const body=req.body||{};
  const hasStatus=Object.prototype.hasOwnProperty.call(body,'status'); const hasLimit=Object.prototype.hasOwnProperty.call(body,'limit');
- if(!hasStatus&&!hasLimit)return res.status(400).json({error:'至少需要修改一项额度字段'});
+ const channel=body.channel==null ? null : String(body.channel);
+ const channelFields=body.fields&&typeof body.fields==='object'&&!Array.isArray(body.fields)?body.fields:null;
+ if(channel && !['distribution','direct'].includes(channel))return res.status(400).json({error:'channel must be distribution or direct'});
+ if(!hasStatus&&!hasLimit&&!channelFields)return res.status(400).json({error:'至少需要修改一项额度字段'});
  let q=(db.quotas||[]).find(x=>x.code===req.params.code&&quotaRules.isUserOverride(x)&&x.userId===ownerId);
  const automatic=(db.quotas||[]).find(x=>x.code===req.params.code&&!quotaRules.isUserOverride(x));
  if(!q&&!automatic)return res.sendStatus(404);
  if(!q){q={...automatic,userId:ownerId,userOverride:true,automaticStatus:automatic.status??null,automaticLimit:automatic.limit??null,overrideFields:[]};db.quotas.push(q)}
  const fields=new Set(Array.isArray(q.overrideFields) ? q.overrideFields : quotaRules.overrideFields(q));
- if(hasStatus){if(typeof body.status!=='string'||!body.status.trim()||body.status.trim().length>80)return res.status(400).json({error:'status must be a non-empty string'});q.status=body.status.trim();fields.add('status')}
- if(hasLimit){const limit=body.limit==null?null:Number(body.limit);if(limit!=null&&(!Number.isFinite(limit)||limit<0))return res.status(400).json({error:'limit must be a non-negative number or null'});q.limit=limit;fields.add('limit')}
- if(!fields.has('status'))q.status=q.automaticStatus??automatic?.status??null;
- if(!fields.has('limit'))q.limit=q.automaticLimit??automatic?.limit??null;
+ if(channelFields){
+  q.channels=JSON.parse(JSON.stringify(q.channels||automatic?.channels||{})); q.channels[channel]=quotaRules.normalizeChannel({...q.channels[channel],...channelFields},q);
+  for(const name of ['status','limit']) if(Object.prototype.hasOwnProperty.call(channelFields,name)) fields.add(`channels.${channel}.${name}`);
+ }
+ if(hasStatus){if(typeof body.status!=='string'||!body.status.trim()||body.status.trim().length>80)return res.status(400).json({error:'status must be a non-empty string'});q.status=body.status.trim();fields.add('status'); q.channels=JSON.parse(JSON.stringify(q.channels||automatic?.channels||{})); q.channels.distribution=quotaRules.normalizeChannel({...q.channels.distribution,status:q.status},q)}
+ if(hasLimit){const limit=body.limit==null?null:Number(body.limit);if(limit!=null&&(!Number.isFinite(limit)||limit<0))return res.status(400).json({error:'limit must be a non-negative number or null'});q.limit=limit;fields.add('limit'); q.channels=JSON.parse(JSON.stringify(q.channels||automatic?.channels||{})); q.channels.distribution=quotaRules.normalizeChannel({...q.channels.distribution,limit},q)}
  Object.assign(q,{userId:ownerId,userOverride:true,overrideFields:[...fields],valueSource:'user',priority:'user'});save();
  res.json(quotaForOwner(req.params.code,ownerId));
 });
@@ -209,3 +227,7 @@ app.get('/api/export',(req,res)=>{const ownerId=user(req);if(!ownerId)return res
 app.post('/api/import/preview',(req,res)=>{if(!user(req))return res.status(401).json({error:'需要登录'});try{const summary=summarizeImportPackage(req.body);res.json({valid:true,format:summary.format,version:summary.version,exportedAt:summary.exportedAt,summary});}catch(e){res.status(400).json({valid:false,error:e.message})}});
 app.post('/api/import',(req,res)=>{const ownerId=user(req);if(!ownerId)return res.status(401).json({error:'需要登录'});try{const next=replaceAccountData(db,ownerId,req.body);fs.writeFileSync(dbPath,JSON.stringify(next,null,2));db=next;res.json({ok:true,summary:summarizeImportPackage(req.body)});}catch(e){res.status(400).json({ok:false,error:e.message})}});
 app.use(express.static(path.join(__dirname,'../web')));if(require.main===module)app.listen(process.env.PORT||3000,()=>console.log('PositionAssistant listening')); module.exports={app,validateTrade,validatePlan,settle,history,confirmPending,exportPackage,summarizeImportPackage};
+
+
+
+

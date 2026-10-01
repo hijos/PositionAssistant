@@ -54,6 +54,21 @@ function resolveFee(transaction, baseAmount, amountInput) {
 
 function calculate(transaction, nav) {
   const price = positiveNumber(nav, '净值', false);
+  if (transaction.entryMode === 'holding') {
+    if (transaction.type !== 'buy') throw new Error('持有金额录入仅支持买入');
+    const marketValue = positiveNumber(transaction.holdingAmount, '持有金额');
+    const returnRate = Number(transaction.holdingReturnRate);
+    if (!Number.isFinite(returnRate) || returnRate <= -100) throw new Error('持有收益率必须大于-100%');
+    const cost = marketValue / (1 + returnRate / 100);
+    if (!Number.isFinite(cost) || cost <= 0) throw new Error('持有收益率无效');
+    return {
+      ...transaction,
+      amount: round(cost), shares: round(marketValue / price),
+      holdingAmount: round(marketValue), holdingReturnRate: returnRate,
+      feeMode: 'fixed', feeRate: null, fixedFee: 0, fee: 0,
+      tradeNav: price, status: 'confirmed', pendingReason: null,
+    };
+  }
   const amountInput = transaction.entryMode === 'amount' ? positiveNumber(transaction.amount, '金额') : 0;
   const sharesInput = transaction.entryMode === 'shares' ? positiveNumber(transaction.shares, '份额') : 0;
   if (!['buy', 'sell'].includes(transaction.type)) throw new Error('交易类型无效');

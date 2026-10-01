@@ -22,6 +22,9 @@ class TransactionEntryPage extends StatefulWidget {
 class _TransactionEntryPageState extends State<TransactionEntryPage> {
   late List<Map<String, dynamic>> funds;
   late final TextEditingController value = TextEditingController(text: '100');
+  late final TextEditingController holdingReturn = TextEditingController(
+    text: '0',
+  );
   late final TextEditingController fee = TextEditingController(text: '0');
   late final TextEditingController note = TextEditingController();
   late final TextEditingController source = TextEditingController();
@@ -90,6 +93,10 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
       'entryMode': entryMode,
       'amount': entryMode == 'amount' ? value.text.trim() : 0,
       'shares': entryMode == 'shares' ? value.text.trim() : 0,
+      'holdingAmount': entryMode == 'holding' ? value.text.trim() : 0,
+      'holdingReturnRate': entryMode == 'holding'
+          ? holdingReturn.text.trim()
+          : 0,
       'feeMode': feeMode,
       'feeRate': feeMode == 'rate' ? fee.text.trim() : 0,
       'fixedFee': feeMode == 'fixed' ? fee.text.trim() : 0,
@@ -164,9 +171,7 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('交易录入'),
-    ),
+    appBar: AppBar(title: const Text('交易录入')),
     body: ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -194,8 +199,8 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                   Text(
                     '交易方向',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   SizedBox(
@@ -219,6 +224,10 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                           : (selection) {
                               setState(() {
                                 transactionType = selection.first;
+                                if (transactionType == 'sell' &&
+                                    entryMode == 'holding') {
+                                  entryMode = 'amount';
+                                }
                                 previewResult = null;
                               });
                             },
@@ -228,8 +237,8 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                   Text(
                     '交易基金',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
@@ -237,7 +246,10 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                     isExpanded: true,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                     ),
                     items: [
                       for (final fund in funds)
@@ -259,7 +271,8 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                             });
                           },
                   ),
-                  if (widget.onSearchAndAdd != null && transactionType == 'buy') ...[
+                  if (widget.onSearchAndAdd != null &&
+                      transactionType == 'buy') ...[
                     const SizedBox(height: 8),
                     Align(
                       alignment: Alignment.centerRight,
@@ -278,19 +291,26 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                   Text(
                     '录入方式',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     initialValue: entryMode,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                     ),
                     items: const [
                       DropdownMenuItem(value: 'amount', child: Text('按金额录入')),
                       DropdownMenuItem(value: 'shares', child: Text('按份额录入')),
+                      DropdownMenuItem(
+                        value: 'holding',
+                        child: Text('按持有金额和收益率录入'),
+                      ),
                     ],
                     onChanged: busy
                         ? null
@@ -298,6 +318,8 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                             if (value == null) return;
                             setState(() {
                               entryMode = value;
+                              if (entryMode == 'holding')
+                                transactionType = 'buy';
                               previewResult = null;
                             });
                           },
@@ -317,10 +339,12 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                   Text(
                     entryMode == 'amount'
                         ? '${transactionType == 'buy' ? '买入' : '卖出'}金额（${transactionType == 'sell' ? '扣费前' : '含手续费'}）'
-                        : '${transactionType == 'buy' ? '买入' : '卖出'}份额',
+                        : entryMode == 'shares'
+                        ? '${transactionType == 'buy' ? '买入' : '卖出'}份额'
+                        : '当前持有金额',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   TextField(
@@ -331,65 +355,107 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                     ),
                     decoration: InputDecoration(
                       border: const OutlineInputBorder(),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                      prefixText: entryMode == 'amount' ? '￥ ' : null,
-                      suffixText: entryMode == 'amount' ? '元' : '份',
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
+                      prefixText: entryMode == 'shares' ? null : '￥ ',
+                      suffixText: entryMode == 'shares' ? '份' : '元',
                     ),
                     onChanged: (_) => changed(),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '手续费',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 5,
-                        child: DropdownButtonFormField<String>(
-                          initialValue: feeMode,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 'rate', child: Text('费率 %')),
-                            DropdownMenuItem(value: 'fixed', child: Text('固定费用 元')),
-                          ],
-                          onChanged: busy
-                              ? null
-                              : (value) {
-                                  if (value == null) return;
-                                  setState(() {
-                                    feeMode = value;
-                                    fee.text = '0';
-                                    previewResult = null;
-                                  });
-                                },
-                        ),
+                  if (entryMode == 'holding') ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      '持有收益率',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        flex: 6,
-                        child: TextField(
-                          controller: fee,
-                          enabled: !busy,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                            suffixText: feeMode == 'rate' ? '%' : '元',
-                          ),
-                          onChanged: (_) => changed(),
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: holdingReturn,
+                      enabled: !busy,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
                       ),
-                    ],
-                  ),
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        suffixText: '%',
+                      ),
+                      onChanged: (_) => changed(),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('将按最新正式净值计算份额，并反推出持有成本。收益率需大于 -100%。'),
+                  ],
+                  if (entryMode != 'holding') ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      '手续费',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 5,
+                          child: DropdownButtonFormField<String>(
+                            initialValue: feeMode,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 12,
+                              ),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'rate',
+                                child: Text('费率 %'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'fixed',
+                                child: Text('固定费用 元'),
+                              ),
+                            ],
+                            onChanged: busy
+                                ? null
+                                : (value) {
+                                    if (value == null) return;
+                                    setState(() {
+                                      feeMode = value;
+                                      fee.text = '0';
+                                      previewResult = null;
+                                    });
+                                  },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 6,
+                          child: TextField(
+                            controller: fee,
+                            enabled: !busy,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: InputDecoration(
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              suffixText: feeMode == 'rate' ? '%' : '元',
+                            ),
+                            onChanged: (_) => changed(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -405,8 +471,8 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                   Text(
                     '成交确认时间',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -420,7 +486,8 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                                   final picked = await showDatePicker(
                                     context: context,
                                     initialDate:
-                                        DateTime.tryParse(date) ?? DateTime.now(),
+                                        DateTime.tryParse(date) ??
+                                        DateTime.now(),
                                     firstDate: DateTime(2000),
                                     lastDate: DateTime.now(),
                                   );
@@ -431,10 +498,16 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                                     previewResult = null;
                                   });
                                 },
-                          icon: const Icon(Icons.calendar_today_outlined, size: 16),
+                          icon: const Icon(
+                            Icons.calendar_today_outlined,
+                            size: 16,
+                          ),
                           label: Text(date),
                           style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 12,
+                            ),
                           ),
                         ),
                       ),
@@ -445,11 +518,20 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                           initialValue: cutoff,
                           decoration: const InputDecoration(
                             border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 12,
+                            ),
                           ),
                           items: const [
-                            DropdownMenuItem(value: 'before', child: Text('15:00 前')),
-                            DropdownMenuItem(value: 'after', child: Text('15:00 后')),
+                            DropdownMenuItem(
+                              value: 'before',
+                              child: Text('15:00 前'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'after',
+                              child: Text('15:00 后'),
+                            ),
                           ],
                           onChanged: busy
                               ? null
@@ -468,8 +550,8 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                   Text(
                     '备注（可选）',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   TextField(
@@ -478,7 +560,10 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                     maxLength: 200,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                     ),
                     onChanged: (_) => changed(),
                   ),
@@ -486,8 +571,8 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                   Text(
                     '来源（可选）',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   TextField(
@@ -496,7 +581,10 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                     maxLength: 100,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                     ),
                     onChanged: (_) => changed(),
                   ),
@@ -545,6 +633,7 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
   @override
   void dispose() {
     value.dispose();
+    holdingReturn.dispose();
     fee.dispose();
     note.dispose();
     source.dispose();

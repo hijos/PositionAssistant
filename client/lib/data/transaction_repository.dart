@@ -39,23 +39,39 @@ Map<String, dynamic> normalizeTransaction(Map<String, dynamic> draft) {
       name.trim().isEmpty ||
       type is! String ||
       entryMode is! String ||
-      !['amount', 'shares'].contains(entryMode) ||
+      !['amount', 'shares', 'holding'].contains(entryMode) ||
       cutoff is! String ||
       !['before', 'after'].contains(cutoff) ||
       date is! String ||
       !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date)) {
     throw const FormatException('交易字段无效');
   }
-  final rawValue = num.tryParse('${draft[entryMode]}');
+  if (entryMode == 'holding' && transactionType != 'buy') {
+    throw const FormatException('持有金额录入仅支持买入');
+  }
+  final rawValue = num.tryParse(
+    '${entryMode == 'holding' ? draft['holdingAmount'] : draft[entryMode]}',
+  );
   if (rawValue == null || !rawValue.isFinite || rawValue <= 0) {
     throw const FormatException('金额或份额必须大于0');
   }
   final value = (rawValue * 100).round() / 100;
   if (value <= 0) throw const FormatException('金额或份额最小精度为0.01');
 
-  final feeMode = draft['feeMode'] == null
-      ? (draft['fixedFee'] != null ? 'fixed' : 'rate')
-      : '${draft['feeMode']}';
+  final holdingReturnRate = entryMode == 'holding'
+      ? num.tryParse('${draft['holdingReturnRate']}')
+      : 0;
+  if (entryMode == 'holding' &&
+      (holdingReturnRate == null ||
+          !holdingReturnRate.isFinite ||
+          holdingReturnRate <= -100)) {
+    throw const FormatException('持有收益率必须大于-100%');
+  }
+  final feeMode = entryMode == 'holding'
+      ? 'fixed'
+      : (draft['feeMode'] == null
+            ? (draft['fixedFee'] != null ? 'fixed' : 'rate')
+            : '${draft['feeMode']}');
   if (!['rate', 'fixed'].contains(feeMode)) {
     throw const FormatException('手续费模式无效');
   }
@@ -85,6 +101,8 @@ Map<String, dynamic> normalizeTransaction(Map<String, dynamic> draft) {
     'entryMode': entryMode,
     'amount': entryMode == 'amount' ? value : 0,
     'shares': entryMode == 'shares' ? value : 0,
+    'holdingAmount': entryMode == 'holding' ? value : null,
+    'holdingReturnRate': entryMode == 'holding' ? holdingReturnRate : null,
     'feeMode': feeMode,
     'feeRate': feeMode == 'rate' ? feeRate : 0,
     'fixedFee': feeMode == 'fixed' ? (fixedFee * 100).round() / 100 : 0,
@@ -191,11 +209,13 @@ class LocalTransactionRepository implements TransactionRepository {
   @override
   Future<Map<String, dynamic>> preview(Map<String, dynamic> draft) async {
     final normalized = normalizeTransaction(draft);
-    final snapshot = await nav.forDate(
-      '${normalized['fundCode']}',
-      '${normalized['date']}',
-      cutoff: '${normalized['cutoff']}',
-    );
+    final snapshot = normalized['entryMode'] == 'holding'
+        ? await nav.latest('${normalized['fundCode']}')
+        : await nav.forDate(
+            '${normalized['fundCode']}',
+            '${normalized['date']}',
+            cutoff: '${normalized['cutoff']}',
+          );
     if (snapshot == null) {
       return {
         ...normalized,
@@ -211,6 +231,24 @@ class LocalTransactionRepository implements TransactionRepository {
     Map<String, dynamic> snapshot,
   ) {
     final price = num.tryParse('${snapshot['nav']}')!.toDouble();
+    if (record['entryMode'] == 'holding') {
+      final marketValue = num.tryParse('${record['holdingAmount']}')!
+          .toDouble();
+      final returnRate = num.tryParse('${record['holdingReturnRate']}')!
+          .toDouble();
+      final cost = marketValue / (1 + returnRate / 100);
+      return {
+        ...record,
+        'status': 'preview',
+        'nav': price,
+        'tradeNav': price,
+        'navDate': snapshot['navDate'],
+        'amount': (cost * 100).round() / 100,
+        'shares': (marketValue / price * 100).round() / 100,
+        'fee': 0,
+        'pendingReason': null,
+      };
+    }
     final input = num.tryParse('${record[record['entryMode']]}')!.toDouble();
     final feeRate = num.tryParse('${record['feeRate'] ?? 0}')?.toDouble() ?? 0;
     final fixedFee =

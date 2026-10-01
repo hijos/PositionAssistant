@@ -10,6 +10,24 @@ class LocalNavRepository {
   final Future<Repository> Function() open;
   final http.Client client;
 
+  Future<Map<String, dynamic>?> latest(
+    String code, {
+    RepositorySession? session,
+  }) async {
+    final storage = session ?? await open();
+    final fetched = await _fetchLatest(code);
+    if (fetched != null) {
+      await storage.put('navSnapshots', fetched['id'] as String, fetched);
+      return fetched;
+    }
+    final cached =
+        (await storage.list('navSnapshots'))
+            .where((x) => x['fundCode'] == code)
+            .toList()
+          ..sort((a, b) => '${b['navDate']}'.compareTo('${a['navDate']}'));
+    return cached.isEmpty ? null : cached.first;
+  }
+
   Future<Map<String, dynamic>?> forDate(
     String code,
     String date, {
@@ -23,11 +41,7 @@ class LocalNavRepository {
     final storage = session ?? await open();
     final cached =
         (await storage.list('navSnapshots'))
-            .where(
-              (x) =>
-                  x['fundCode'] == code &&
-                  '${x['navDate']}' == date,
-            )
+            .where((x) => x['fundCode'] == code && '${x['navDate']}' == date)
             .toList()
           ..sort((a, b) => '${a['navDate']}'.compareTo('${b['navDate']}'));
     if (cached.isNotEmpty) return cached.first;
@@ -102,18 +116,18 @@ class LocalNavRepository {
       if (code is! String || !RegExp(r'^\d{6}$').hasMatch(code)) continue;
       final fetched = await _fetchLatest(code);
       if (fetched != null) {
-        await storage.put(
-        'navSnapshots',
-        fetched['id'] as String,
-        fetched,
-      );
+        await storage.put('navSnapshots', fetched['id'] as String, fetched);
       }
       final current = await storage.get('funds', code);
       if (current == null) continue;
       // A QDII NAV can lag a US close even when today's NAV request fails.
       // Estimate from the newest known valuation date, not publication time.
-      final snapshot = fetched != null &&
-              '${fetched['navDate']}'.compareTo('${current['navDate'] ?? ''}') >= 0
+      final snapshot =
+          fetched != null &&
+              '${fetched['navDate']}'.compareTo(
+                    '${current['navDate'] ?? ''}',
+                  ) >=
+                  0
           ? fetched
           : current;
       if (num.tryParse('${snapshot['nav']}') == null ||
@@ -146,19 +160,25 @@ class LocalNavRepository {
     final symbol = _proxySymbol(fund);
     if (symbol == null) return const {};
     try {
-      final qqq = await (quoteCache['$symbol:$navDate'] ??=
-          _fetchMarketQuote(symbol, navDate));
-      final fx = await (quoteCache['CNY=X:$navDate'] ??=
-          _fetchMarketQuote('CNY=X', navDate));
-      final dates = qqq.keys
-          .where((date) => date.compareTo(navDate) > 0 && fx.containsKey(date))
-          .toList()
-        ..sort();
+      final qqq = await (quoteCache['$symbol:$navDate'] ??= _fetchMarketQuote(
+        symbol,
+        navDate,
+      ));
+      final fx = await (quoteCache['CNY=X:$navDate'] ??= _fetchMarketQuote(
+        'CNY=X',
+        navDate,
+      ));
+      final dates =
+          qqq.keys
+              .where(
+                (date) => date.compareTo(navDate) > 0 && fx.containsKey(date),
+              )
+              .toList()
+            ..sort();
       if (dates.isEmpty) throw StateError('暂无晚于正式净值日的共同行情');
       final date = dates.last;
-      final rate = (qqq[date]! / qqq[navDate]!) *
-              (fx[date]! / fx[navDate]!) -
-          1;
+      final rate =
+          (qqq[date]! / qqq[navDate]!) * (fx[date]! / fx[navDate]!) - 1;
       final estimatedNav = (nav * (1 + rate) * 1000000).round() / 1000000;
       return {
         'estimatedNav': estimatedNav,
@@ -202,12 +222,17 @@ class LocalNavRepository {
     String symbol,
     String baseDate,
   ) async {
-    final start = DateTime.parse(baseDate)
-        .subtract(const Duration(days: 7))
-        .millisecondsSinceEpoch ~/ 1000;
+    final start =
+        DateTime.parse(baseDate)
+            .subtract(const Duration(days: 7))
+            .millisecondsSinceEpoch ~/
+        1000;
     final end = DateTime.now().millisecondsSinceEpoch ~/ 1000 + 86400;
     http.Response? response;
-    for (final host in ['query1.finance.yahoo.com', 'query2.finance.yahoo.com']) {
+    for (final host in [
+      'query1.finance.yahoo.com',
+      'query2.finance.yahoo.com',
+    ]) {
       try {
         final candidate = await client
             .get(
