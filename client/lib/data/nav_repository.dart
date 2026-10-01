@@ -96,6 +96,7 @@ class LocalNavRepository {
   Future<void> refreshLatest() async {
     final storage = await open();
     final funds = await storage.list('funds');
+    final quoteCache = <String, Future<Map<String, double>>>{};
     for (final fund in funds) {
       final code = fund['code'];
       if (code is! String || !RegExp(r'^\d{6}$').hasMatch(code)) continue;
@@ -130,6 +131,7 @@ class LocalNavRepository {
           snapshot['nav'] as num,
           snapshot['navDate'] as String,
           current,
+          quoteCache,
         ),
       });
     }
@@ -139,12 +141,15 @@ class LocalNavRepository {
     num nav,
     String navDate,
     Map<String, dynamic> fund,
+    Map<String, Future<Map<String, double>>> quoteCache,
   ) async {
     final symbol = _proxySymbol(fund);
     if (symbol == null) return const {};
     try {
-      final qqq = await _fetchYahooQuote(symbol, navDate);
-      final fx = await _fetchYahooQuote('CNY=X', navDate);
+      final qqq = await (quoteCache['$symbol:$navDate'] ??=
+          _fetchYahooQuote(symbol, navDate));
+      final fx = await (quoteCache['CNY=X:$navDate'] ??=
+          _fetchYahooQuote('CNY=X', navDate));
       final dates = qqq.keys
           .where((date) => date.compareTo(navDate) > 0 && fx.containsKey(date))
           .toList()
