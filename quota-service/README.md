@@ -13,7 +13,7 @@ node quota-service/index.js
 
 Open `http://127.0.0.1:4100` on the PC. From a phone on the same WiFi use `http://<PC-LAN-IP>:4100`.
 
-The first version does not crawl any upstream site. Use the management page to enter fund code, name, category, channel, status, daily limit and fee rate.
+The first version does not crawl any upstream site. Use the management page to enter fund code, name, category, fee rate, and the status/daily limit of the distribution and direct channels in a single save.
 
 ## API
 
@@ -21,7 +21,7 @@ The first version does not crawl any upstream site. Use the management page to e
 - `GET /api/quotas` (public app snapshot)
 - `POST /api/corrections` (app user correction suggestion)
 - `POST /api/admin/login`
-- `GET/PUT /api/admin/quotas/:code`
+- `GET/PUT /api/admin/quotas/:code` — the PUT body accepts either a single channel (`channel`, `status`, `limit`, `sourceUrl`, ...) or both channels at once (`channels: { distribution: {...}, direct: {...} }`)
 - `GET/PUT /api/admin/settings`
 - `GET /api/admin/corrections`
 - `GET /api/admin/audit`

@@ -65,3 +65,37 @@ test('admin endpoints require an admin session', async t => {
   assert.equal((await request(base, 'GET', '/api/admin/quotas')).status, 401);
   assert.equal((await request(base, 'POST', '/api/admin/login', { body: { password: 'bad' } })).status, 401);
 });
+
+test('admin can save both channels in one request', async t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'quota-service-both-'));
+  const service = createQuotaServiceApp({ dbPath: path.join(dir, 'db.json'), adminPassword: 'test-secret' });
+  const server = service.app.listen(0);
+  t.after(() => { server.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const login = await request(base, 'POST', '/api/admin/login', { body: { password: 'test-secret' } });
+  const token = login.body.token;
+
+  const saved = await request(base, 'PUT', '/api/admin/quotas/012752', { token, body: { name: '测试基金', category: '纳斯达克100', feeRatePercent: 1.2, channels: { distribution: { status: '限大额', limit: 1000, sourceUrl: 'https://a.example' }, direct: { status: '开放申购' } } } });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.item.channels.distribution.status, '限大额');
+  assert.equal(saved.body.item.channels.distribution.limit, 1000);
+  assert.equal(saved.body.item.channels.distribution.sourceUrl, 'https://a.example');
+  assert.equal(saved.body.item.channels.direct.status, '开放申购');
+  assert.equal(saved.body.item.channels.direct.limit, null);
+  assert.equal(saved.body.item.feeRate, 0.012);
+
+  const audit = (await request(base, 'GET', '/api/admin/audit', { token })).body.items;
+  assert.equal(audit.length, 1);
+  assert.equal(audit[0].channel, null);
+  assert.deepEqual(audit[0].channels, ['distribution', 'direct']);
+
+  const update = await request(base, 'PUT', '/api/admin/quotas/012752', { token, body: { channels: { direct: { status: '暂停申购' } } } });
+  assert.equal(update.status, 200);
+  assert.equal(update.body.item.channels.distribution.limit, 1000);
+  assert.equal(update.body.item.channels.direct.status, '暂停申购');
+
+  const badChannel = await request(base, 'PUT', '/api/admin/quotas/012752', { token, body: { channels: { whatever: { status: '限大额' } } } });
+  assert.equal(badChannel.status, 400);
+  const badStatus = await request(base, 'PUT', '/api/admin/quotas/012752', { token, body: { channels: { distribution: { status: '不限购' }, direct: { status: '限大额' } } } });
+  assert.equal(badStatus.status, 400);
+});

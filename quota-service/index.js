@@ -263,15 +263,31 @@ function createQuotaServiceApp(options = {}) {
   app.get('/api/admin/fund-catalog', requireAdmin, (req, res) => res.json({ items: clone(FUND_CATALOG) }));
   app.put('/api/admin/quotas/:code', requireAdmin, (req, res) => {
     const code = String(req.params.code || '');
-    const channel = String(req.body?.channel || 'distribution');
+    const body = req.body || {};
+    const has = (target, key) => Object.prototype.hasOwnProperty.call(target || {}, key);
     if (!validCode(code)) return res.status(400).json({ error: '基金代码无效' });
-    if (!CHANNELS.has(channel)) return res.status(400).json({ error: 'channel must be distribution or direct' });
-    let nextStatus, nextLimit, nextFeeRate;
+    let entries;
+    if (body.channels != null) {
+      if (typeof body.channels !== 'object' || Array.isArray(body.channels)) return res.status(400).json({ error: 'channels 格式无效' });
+      entries = Object.entries(body.channels);
+      if (!entries.length || entries.some(([key]) => !CHANNELS.has(key))) return res.status(400).json({ error: 'channel must be distribution or direct' });
+    } else {
+      const channel = String(body.channel || 'distribution');
+      if (!CHANNELS.has(channel)) return res.status(400).json({ error: 'channel must be distribution or direct' });
+      entries = [[channel, body]];
+    }
+    let nextFeeRate;
+    const prepared = [];
     try {
-      if (Object.prototype.hasOwnProperty.call(req.body || {}, 'status')) nextStatus = normalizeStatus(req.body.status);
-      if (Object.prototype.hasOwnProperty.call(req.body || {}, 'limit')) nextLimit = normalizeLimit(req.body.limit);
-      if (Object.prototype.hasOwnProperty.call(req.body || {}, 'feeRatePercent')) {
-        const percent = req.body.feeRatePercent == null || String(req.body.feeRatePercent).trim() === '' ? null : Number(req.body.feeRatePercent);
+      for (const [key, payload] of entries) {
+        const update = {};
+        if (has(payload, 'status')) update.status = normalizeStatus(payload.status);
+        if (has(payload, 'limit')) update.limit = normalizeLimit(payload.limit);
+        if (has(payload, 'sourceUrl')) update.sourceUrl = String(payload.sourceUrl || '').trim() || null;
+        prepared.push([key, update]);
+      }
+      if (has(body, 'feeRatePercent')) {
+        const percent = body.feeRatePercent == null || String(body.feeRatePercent).trim() === '' ? null : Number(body.feeRatePercent);
         if (percent != null && (!Number.isFinite(percent) || percent < 0 || percent > 100)) throw new Error('费率应在 0% 至 100% 之间');
         nextFeeRate = percent == null ? null : normalizeFeeRate(percent / 100);
       }
@@ -279,24 +295,27 @@ function createQuotaServiceApp(options = {}) {
     let item = currentQuota(db, code);
     const at = timestamp(clock);
     if (!item) {
-      item = normalizeQuota({ code, name: req.body?.name || code, category: req.body?.category || 'QDII', channels: {} });
+      item = normalizeQuota({ code, name: body.name || code, category: body.category || 'QDII', channels: {} });
       db.quotas.push(item);
     }
     const before = clone(item);
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'name')) item.name = String(req.body.name || code).trim().slice(0, 200) || code;
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'category')) item.category = String(req.body.category || 'QDII').trim().slice(0, 40) || 'QDII';
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'detail')) item.detail = String(req.body.detail || '').trim().slice(0, 500) || null;
-    const next = { ...(item.channels[channel] || normalizeChannel({})) };
-    if (nextStatus !== undefined) next.status = nextStatus;
-    if (next.status === '开放申购') next.limit = null;
-    else if (Object.prototype.hasOwnProperty.call(req.body || {}, 'limit')) next.limit = nextLimit;
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'sourceUrl')) next.sourceUrl = String(req.body.sourceUrl || '').trim() || null;
-    next.source = '管理员录入'; next.sourceType = 'manual'; next.updatedAt = at;
-    item.channels[channel] = normalizeChannel(next);
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'feeRatePercent')) item.feeRate = nextFeeRate;
+    if (has(body, 'name')) item.name = String(body.name || code).trim().slice(0, 200) || code;
+    if (has(body, 'category')) item.category = String(body.category || 'QDII').trim().slice(0, 40) || 'QDII';
+    if (has(body, 'detail')) item.detail = String(body.detail || '').trim().slice(0, 500) || null;
+    for (const [key, update] of prepared) {
+      const next = { ...(item.channels[key] || normalizeChannel({})) };
+      if (update.status !== undefined) next.status = update.status;
+      if (next.status === '开放申购') next.limit = null;
+      else if (update.limit !== undefined) next.limit = update.limit;
+      if (update.sourceUrl !== undefined) next.sourceUrl = update.sourceUrl;
+      next.source = '管理员录入'; next.sourceType = 'manual'; next.updatedAt = at;
+      item.channels[key] = normalizeChannel(next);
+    }
+    if (has(body, 'feeRatePercent')) item.feeRate = nextFeeRate;
     item.source = '管理员录入'; item.sourceType = 'manual';
     bump(db, item, at);
-    db.audit.unshift({ id: id('audit'), type: 'manual-update', code, channel, before, after: clone(item), afterRevision: item.revision, createdAt: at });
+    const updatedChannels = prepared.map(([key]) => key);
+    db.audit.unshift({ id: id('audit'), type: 'manual-update', code, channel: updatedChannels.length === 1 ? updatedChannels[0] : null, channels: updatedChannels, before, after: clone(item), afterRevision: item.revision, createdAt: at });
     saveDb(dbPath, db);
     res.json({ version: db.version, item: clone(item) });
   });
