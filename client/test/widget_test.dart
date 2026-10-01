@@ -92,6 +92,14 @@ void main() {
       await tester.tap(find.text('设置').last);
       await tester.pumpAndSettle();
       expect(find.byType(AppBar), findsNothing);
+      // Local mode hides the account section entirely; switching to remote
+      // mode via the segmented control reveals the login entry.
+      expect(find.text('本地模式'), findsOneWidget);
+      expect(find.text('远端账号'), findsNothing);
+      expect(find.text('登录'), findsNothing);
+      await tester.tap(find.text('远端模式'));
+      await tester.pumpAndSettle();
+      expect(find.text('远端账号'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('登录'),
         160,

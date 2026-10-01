@@ -816,35 +816,124 @@ class _HomeShellState extends State<HomeShell> {
         ];
       default:
         return [
-          SectionCard(
-            title: '数据模式',
-            description: kIsWeb
-                ? 'Web 使用远端模式；${remoteFunds == null ? '尚未登录' : '已登录'}。'
-                : '${localMode ? '本地' : '远端'}模式；两种模式数据彼此独立。',
-          ),
-          _modeSetting(),
-          _entry(context, '登录'),
-          _entry(context, '注册'),
-          _entry(context, '退出登录'),
-
-          _entry(context, '数据导入'),
-          _entry(context, '数据导出'),
-          _entry(context, '覆盖确认'),
+          _modeCard(context),
+          if (!localMode) _accountCard(context),
+          if (localMode) _dataCard(context),
         ];
     }
   }
 
-  Widget _modeSetting() => Card(
-    child: SwitchListTile(
-      title: const Text('本地/远端模式设置'),
-      subtitle: Text(localMode ? '当前：本地模式' : '当前：远端模式'),
-      value: localMode,
-      onChanged: kIsWeb
-          ? null
-          : (value) => setState(() {
-              localMode = value;
-              reloadFunds();
-            }),
+  /// 数据模式说明与切换合并成一张卡；Web 端固定远端，胶囊分段只读展示。
+  Widget _modeCard(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('数据模式', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Text(
+            kIsWeb
+                ? 'Web 端固定使用远端模式，数据保存在服务端账号中。'
+                : '本地模式数据只保存在本机；远端模式与账号同步。两种模式数据彼此独立。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment<bool>(
+                  value: true,
+                  label: Text('本地模式'),
+                  icon: Icon(Icons.phone_android_outlined, size: 18),
+                ),
+                ButtonSegment<bool>(
+                  value: false,
+                  label: Text('远端模式'),
+                  icon: Icon(Icons.cloud_outlined, size: 18),
+                ),
+              ],
+              selected: {localMode},
+              onSelectionChanged: kIsWeb
+                  ? null
+                  : (selection) => setState(() {
+                      if (localMode == selection.first) return;
+                      localMode = selection.first;
+                      reloadFunds();
+                    }),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  /// 远端模式下的账号操作；本地模式不需要登录体系，整张卡不渲染。
+  Widget _accountCard(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('远端账号', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Text(
+            remoteFunds == null ? '尚未登录，登录后可同步持仓与交易。' : '已登录远端账号。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerRight,
+            child: remoteFunds == null
+                ? FilledButton.tonalIcon(
+                    onPressed: login,
+                    icon: const Icon(Icons.login, size: 18),
+                    label: const Text('登录'),
+                  )
+                : OutlinedButton.icon(
+                    onPressed: logout,
+                    icon: const Icon(Icons.logout, size: 18),
+                    label: const Text('退出登录'),
+                  ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  /// 本地数据的导入导出入口，只保留两个小按钮。
+  Widget _dataCard(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('本地数据', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: openImport,
+                icon: const Icon(Icons.file_upload_outlined, size: 18),
+                label: const Text('导入'),
+              ),
+              OutlinedButton.icon(
+                onPressed: exportLocal,
+                icon: const Icon(Icons.file_download_outlined, size: 18),
+                label: const Text('导出'),
+              ),
+            ],
+          ),
+        ],
+      ),
     ),
   );
 
@@ -862,19 +951,11 @@ class _HomeShellState extends State<HomeShell> {
           ? openTransactionHistory
           : title == '持仓详情'
           ? openHoldingDetails
-          : title == '登录'
-          ? login
-          : title == '退出登录'
-          ? logout
-          : title == '数据导入'
-          ? openImport
           : title == '定投计划' && defaultTargetPlatform == TargetPlatform.android
           ? openPlans
           : title == '额度详情与手动修改' &&
                 defaultTargetPlatform == TargetPlatform.android
           ? openQuotas
-          : title == '数据导出' && defaultTargetPlatform == TargetPlatform.android
-          ? exportLocal
           : () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => title == '基金搜索与添加'
