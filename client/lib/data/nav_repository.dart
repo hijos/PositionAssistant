@@ -133,16 +133,16 @@ class LocalNavRepository {
     String navDate,
     Map<String, dynamic> fund,
   ) async {
+    final symbol = _proxySymbol(fund);
+    if (symbol == null) return const {};
     try {
-      final symbol = _proxySymbol(fund);
-      if (symbol == null) return const {};
       final qqq = await _fetchYahooQuote(symbol, navDate);
       final fx = await _fetchYahooQuote('CNY=X', navDate);
       final dates = qqq.keys
           .where((date) => date.compareTo(navDate) > 0 && fx.containsKey(date))
           .toList()
         ..sort();
-      if (dates.isEmpty) return const {};
+      if (dates.isEmpty) throw StateError('暂无晚于正式净值日的共同行情');
       final date = dates.last;
       final rate = (qqq[date]! / qqq[navDate]!) *
               (fx[date]! / fx[navDate]!) -
@@ -155,10 +155,16 @@ class LocalNavRepository {
         'estimateCoverage': 1.0,
         'estimateRuleVersion': 'qqq-fx-v1',
         'estimateBaseDate': navDate,
+        'estimateError': null,
         'estimateMethod': '按 QQQ + USD/CNY 组合涨跌估算（100%）；不含费用、分红与调仓',
       };
-    } catch (_) {
-      return const {};
+    } catch (error) {
+      return {
+        'estimatedNav': null,
+        'estimateRuleVersion': 'qqq-fx-v1',
+        'estimateSource': '$symbol + USD/CNY（Yahoo Finance，100%代理）',
+        'estimateError': '$error',
+      };
     }
   }
 
@@ -204,12 +210,15 @@ class LocalNavRepository {
       throw StateError('行情数据缺失');
     }
     final points = <String, double>{};
+    // Yahoo FX daily bars start at London midnight, which can be the
+    // previous UTC date. Use the exchange offset when assigning dates.
+    final offset = num.tryParse('${result['meta']?['gmtoffset'] ?? 0}') ?? 0;
     for (var i = 0; i < timestamps.length && i < closes.length; i++) {
       final timestamp = num.tryParse('${timestamps[i]}');
       final close = num.tryParse('${closes[i]}');
       if (timestamp == null || close == null || close <= 0) continue;
       final date = DateTime.fromMillisecondsSinceEpoch(
-        timestamp.toInt() * 1000,
+        (timestamp.toInt() + offset.toInt()) * 1000,
         isUtc: true,
       ).toIso8601String().substring(0, 10);
       points[date] = close.toDouble();

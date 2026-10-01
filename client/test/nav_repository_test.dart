@@ -152,7 +152,10 @@ void main() {
               'chart': {
                 'result': [
                   {
-                    'timestamp': [base, latest],
+                    'meta': {'gmtoffset': symbol == 'QQQ' ? 0 : 3600},
+                    'timestamp': symbol == 'QQQ'
+                        ? [base, latest]
+                        : [base - 3600, latest - 3600],
                     'indicators': {
                       'quote': [
                         {'close': prices},
