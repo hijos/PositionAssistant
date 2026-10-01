@@ -50,6 +50,8 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int selected = 0;
+  // 每次点击底部「额度」tab 时递增，驱动额度页自动刷新。
+  int quotaRefreshToken = 0;
   bool localMode = !kIsWeb;
   Future<Repository>? localStorage;
   late final LocalFundCatalogRepository localCatalog =
@@ -670,8 +672,8 @@ class _HomeShellState extends State<HomeShell> {
     Icons.list_alt,
     Icons.settings_outlined,
   ];
-  // 「持仓」「自选」「设置」三页自身带有内容区或悬浮操作，不再重复显示顶栏。
-  static const tabsWithoutAppBar = {0, 2, 4};
+  // 「持仓」「额度」「自选」「设置」四页自身带有内容区或悬浮操作，不再重复显示顶栏。
+  static const tabsWithoutAppBar = {0, 2, 3, 4};
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -683,6 +685,7 @@ class _HomeShellState extends State<HomeShell> {
                 ? QuotaPage(
                     key: ValueKey(localMode ? 'local-quota' : remoteQuotas),
                     repository: localMode ? localQuotas : remoteQuotas!,
+                    refreshToken: quotaRefreshToken,
                   )
                 : Center(
                     child: FilledButton(
@@ -706,7 +709,10 @@ class _HomeShellState extends State<HomeShell> {
     bottomNavigationBar: NavigationBar(
       selectedIndex: selected,
       onDestinationSelected: (value) {
-        setState(() => selected = value);
+        setState(() {
+          selected = value;
+          if (value == 3) quotaRefreshToken++;
+        });
         if (value == 0 && localMode) _refreshLocalNav();
         if (value == 1) unawaited(_confirmPendingTransactions());
       },

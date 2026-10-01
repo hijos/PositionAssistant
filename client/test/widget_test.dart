@@ -77,7 +77,9 @@ void main() {
 
       await tester.tap(find.text('额度').last);
       await tester.pumpAndSettle();
-      expect(find.byType(AppBar), findsOneWidget);
+      // The quota tab now renders its own content without a shell app bar,
+      // mirroring the holdings/watchlist/settings tabs.
+      expect(find.byType(AppBar), findsNothing);
       await tester.scrollUntilVisible(
         find.text('额度详情与手动修改'),
         160,
