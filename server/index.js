@@ -25,8 +25,8 @@ function validateTrade(b){
  if(!/^\d{4}-\d{2}-\d{2}$/.test(b.date)||!Number.isFinite(Date.parse(b.date))||new Date(b.date).toISOString().slice(0,10)!==b.date||b.date>new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Shanghai'}))throw Error('交易日期无效');
  const rawValue=Number(b.entryMode==='holding'?b.holdingAmount:b[b.entryMode]);if(!Number.isFinite(rawValue)||rawValue<=0)throw Error('金额或份额必须大于0');
  const value=Math.round((rawValue+Number.EPSILON)*100)/100;if(value<=0)throw Error('金额或份额最小精度为0.01');
- const holdingReturnRate=b.entryMode==='holding'?Number(b.holdingReturnRate):0;
- if(b.entryMode==='holding'&&(!Number.isFinite(holdingReturnRate)||holdingReturnRate<=-100))throw Error('持有收益率必须大于-100%');
+ const holdingProfit=b.entryMode==='holding'?Number(b.holdingProfit):0;
+ if(b.entryMode==='holding'&&(b.holdingProfit==null||String(b.holdingProfit).trim()===''||!Number.isFinite(holdingProfit)||holdingProfit>=value))throw Error('持有收益必须是有效金额且小于持有金额');
  const requestedMode=b.entryMode==='holding'?'fixed':(b.feeMode==null?(b.fixedFee!=null||b.fee!=null?'fixed':'rate'):String(b.feeMode));
  if(!['rate','fixed'].includes(requestedMode))throw Error('手续费模式无效');
  let feeRate=null,fixedFee=0;
@@ -42,7 +42,7 @@ function validateTrade(b){
  }
  const text=(value,max)=>{if(value==null)return '';if(typeof value!=='string'||value.trim().length>max)throw Error('交易备注或来源无效');return value.trim()};
  const clientRequestId=b.clientRequestId==null?'':text(b.clientRequestId,128);
- return {fundCode:b.fundCode,fundName:text(b.fundName,200),fundType:text(b.fundType,100),type:b.type,entryMode:b.entryMode,amount:b.entryMode==='amount'?value:0,shares:b.entryMode==='shares'?value:0,holdingAmount:b.entryMode==='holding'?value:null,holdingReturnRate:b.entryMode==='holding'?holdingReturnRate:null,feeMode:requestedMode,feeRate, fixedFee,date:b.date,cutoff:b.cutoff,note:text(b.note,200),source:text(b.source,100),clientRequestId,status:'pending'};
+ return {fundCode:b.fundCode,fundName:text(b.fundName,200),fundType:text(b.fundType,100),type:b.type,entryMode:b.entryMode,amount:b.entryMode==='amount'?value:0,shares:b.entryMode==='shares'?value:0,holdingAmount:b.entryMode==='holding'?value:null,holdingProfit:b.entryMode==='holding'?holdingProfit:null,feeMode:requestedMode,feeRate, fixedFee,date:b.date,cutoff:b.cutoff,note:text(b.note,200),source:text(b.source,100),clientRequestId,status:'pending'};
 }
 function validatePlan(body={}) {
  const fundCode=String(body.fundCode||'').trim();

@@ -4,6 +4,14 @@ import 'repository.dart';
 import 'import_repository.dart';
 import 'nav_repository.dart';
 
+double holdingProfitForRecord(Map<String, dynamic> record) {
+  if (record['holdingProfit'] != null)
+    return num.parse('${record['holdingProfit']}').toDouble();
+  final amount = num.parse('${record['holdingAmount']}').toDouble();
+  final rate = num.parse('${record['holdingReturnRate']}').toDouble();
+  return amount - amount / (1 + rate / 100);
+}
+
 bool _validDate(String date) {
   final parsed = DateTime.tryParse(date);
   return RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date) &&
@@ -339,13 +347,12 @@ Future<List<Map<String, dynamic>>> confirmLocalPending(
                 ? input - input / (1 + feeRate / 100)
                 : input * feeRate / 100);
       final holding = record['entryMode'] == 'holding';
-      final returnRate = num.tryParse('${record['holdingReturnRate'] ?? 0}')!
-          .toDouble();
+      final profit = holding ? holdingProfitForRecord(record) : 0;
       final shares = holding
           ? input / price
           : (record['entryMode'] == 'amount' ? (input - fee) / price : input);
       final amount = holding
-          ? input / (1 + returnRate / 100)
+          ? input - profit
           : (record['entryMode'] == 'amount'
                 ? input
                 : input * price + (record['type'] == 'buy' ? fee : 0));

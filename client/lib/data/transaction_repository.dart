@@ -58,14 +58,14 @@ Map<String, dynamic> normalizeTransaction(Map<String, dynamic> draft) {
   final value = (rawValue * 100).round() / 100;
   if (value <= 0) throw const FormatException('金额或份额最小精度为0.01');
 
-  final holdingReturnRate = entryMode == 'holding'
-      ? num.tryParse('${draft['holdingReturnRate']}')
+  final holdingProfit = entryMode == 'holding'
+      ? num.tryParse('${draft['holdingProfit']}')
       : 0;
   if (entryMode == 'holding' &&
-      (holdingReturnRate == null ||
-          !holdingReturnRate.isFinite ||
-          holdingReturnRate <= -100)) {
-    throw const FormatException('持有收益率必须大于-100%');
+      (holdingProfit == null ||
+          !holdingProfit.isFinite ||
+          holdingProfit >= value)) {
+    throw const FormatException('持有收益必须是有效金额且小于持有金额');
   }
   final feeMode = entryMode == 'holding'
       ? 'fixed'
@@ -102,7 +102,7 @@ Map<String, dynamic> normalizeTransaction(Map<String, dynamic> draft) {
     'amount': entryMode == 'amount' ? value : 0,
     'shares': entryMode == 'shares' ? value : 0,
     'holdingAmount': entryMode == 'holding' ? value : null,
-    'holdingReturnRate': entryMode == 'holding' ? holdingReturnRate : null,
+    'holdingProfit': entryMode == 'holding' ? holdingProfit : null,
     'feeMode': feeMode,
     'feeRate': feeMode == 'rate' ? feeRate : 0,
     'fixedFee': feeMode == 'fixed' ? (fixedFee * 100).round() / 100 : 0,
@@ -234,9 +234,8 @@ class LocalTransactionRepository implements TransactionRepository {
     if (record['entryMode'] == 'holding') {
       final marketValue = num.tryParse('${record['holdingAmount']}')!
           .toDouble();
-      final returnRate = num.tryParse('${record['holdingReturnRate']}')!
-          .toDouble();
-      final cost = marketValue / (1 + returnRate / 100);
+      final profit = holdingProfitForRecord(record);
+      final cost = marketValue - profit;
       return {
         ...record,
         'status': 'preview',
@@ -463,4 +462,12 @@ class RemoteTransactionRepository implements TransactionRepository {
 
   @override
   Future<void> close() async => client.close();
+}
+
+double holdingProfitForRecord(Map<String, dynamic> record) {
+  if (record['holdingProfit'] != null)
+    return num.parse('${record['holdingProfit']}').toDouble();
+  final amount = num.parse('${record['holdingAmount']}').toDouble();
+  final rate = num.parse('${record['holdingReturnRate']}').toDouble();
+  return amount - amount / (1 + rate / 100);
 }

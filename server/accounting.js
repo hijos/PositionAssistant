@@ -57,14 +57,15 @@ function calculate(transaction, nav) {
   if (transaction.entryMode === 'holding') {
     if (transaction.type !== 'buy') throw new Error('持有金额录入仅支持买入');
     const marketValue = positiveNumber(transaction.holdingAmount, '持有金额');
-    const returnRate = Number(transaction.holdingReturnRate);
-    if (!Number.isFinite(returnRate) || returnRate <= -100) throw new Error('持有收益率必须大于-100%');
-    const cost = marketValue / (1 + returnRate / 100);
-    if (!Number.isFinite(cost) || cost <= 0) throw new Error('持有收益率无效');
+    const profit = transaction.holdingProfit == null
+      ? marketValue - marketValue / (1 + Number(transaction.holdingReturnRate) / 100)
+      : Number(transaction.holdingProfit);
+    const cost = marketValue - profit;
+    if (!Number.isFinite(profit) || !Number.isFinite(cost) || cost <= 0) throw new Error('持有收益必须是有效金额且小于持有金额');
     return {
       ...transaction,
       amount: round(cost), shares: round(marketValue / price),
-      holdingAmount: round(marketValue), holdingReturnRate: returnRate,
+      holdingAmount: round(marketValue), holdingProfit: round(profit),
       feeMode: 'fixed', feeRate: null, fixedFee: 0, fee: 0,
       tradeNav: price, status: 'confirmed', pendingReason: null,
     };

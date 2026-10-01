@@ -471,9 +471,32 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             '交易',
             _rows([
               ('交易方向', isBuy ? '买入' : '卖出'),
-              ('录入方式', item['entryMode'] == 'shares' ? '按份额' : '按金额'),
-              ('交易金额', _number(item['amount'])),
-              ('交易份额', _number(item['shares'])),
+              (
+                '录入方式',
+                switch (item['entryMode']) {
+                  'shares' => '按份额',
+                  'holding' =>
+                    item['holdingProfit'] != null
+                        ? '按持有金额和持有收益'
+                        : '按持有金额和持有收益率',
+                  _ => '按金额',
+                },
+              ),
+              if (item['entryMode'] == 'holding') ...[
+                ('持有金额（原始输入）', _number(item['holdingAmount'])),
+                if (item['holdingProfit'] != null)
+                  ('持有收益（原始输入）', _inputNumber(item['holdingProfit']))
+                else
+                  (
+                    '持有收益率（原始输入）',
+                    _inputNumber(item['holdingReturnRate'], suffix: '%'),
+                  ),
+                ('交易金额（计算结果）', _number(item['amount'])),
+                ('交易份额（计算结果）', _number(item['shares'])),
+              ] else ...[
+                ('交易金额', _number(item['amount'])),
+                ('交易份额', _number(item['shares'])),
+              ],
               ('操作日期', item['date'] ?? '未记录'),
               ('操作时间', item['cutoff'] == 'after' ? '15:00 后' : '15:00 前'),
             ]),
@@ -560,6 +583,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         ),
     ],
   );
+
+  String _inputNumber(dynamic value, {String suffix = ''}) =>
+      value == null ? '未记录' : '$value$suffix';
 
   String _number(dynamic value, {String suffix = ''}) {
     if (value == null || '$value' == '0' || '$value' == '0.0') {

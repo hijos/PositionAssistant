@@ -22,7 +22,7 @@ class TransactionEntryPage extends StatefulWidget {
 class _TransactionEntryPageState extends State<TransactionEntryPage> {
   late List<Map<String, dynamic>> funds;
   late final TextEditingController value = TextEditingController(text: '100');
-  late final TextEditingController holdingReturn = TextEditingController(
+  late final TextEditingController holdingProfit = TextEditingController(
     text: '0',
   );
   late final TextEditingController fee = TextEditingController(text: '0');
@@ -94,9 +94,7 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
       'amount': entryMode == 'amount' ? value.text.trim() : 0,
       'shares': entryMode == 'shares' ? value.text.trim() : 0,
       'holdingAmount': entryMode == 'holding' ? value.text.trim() : 0,
-      'holdingReturnRate': entryMode == 'holding'
-          ? holdingReturn.text.trim()
-          : 0,
+      'holdingProfit': entryMode == 'holding' ? holdingProfit.text.trim() : 0,
       'feeMode': feeMode,
       'feeRate': feeMode == 'rate' ? fee.text.trim() : 0,
       'fixedFee': feeMode == 'fixed' ? fee.text.trim() : 0,
@@ -309,7 +307,7 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                       DropdownMenuItem(value: 'shares', child: Text('按份额录入')),
                       DropdownMenuItem(
                         value: 'holding',
-                        child: Text('按持有金额和收益率录入'),
+                        child: Text('按持有金额和持有收益录入'),
                       ),
                     ],
                     onChanged: busy
@@ -367,14 +365,14 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                   if (entryMode == 'holding') ...[
                     const SizedBox(height: 16),
                     Text(
-                      '持有收益率',
+                      '持有收益',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 8),
                     TextField(
-                      controller: holdingReturn,
+                      controller: holdingProfit,
                       enabled: !busy,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
@@ -382,12 +380,15 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                       ),
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
-                        suffixText: '%',
+                        prefixText: '￥ ',
+                        suffixText: '元',
                       ),
                       onChanged: (_) => changed(),
                     ),
                     const SizedBox(height: 8),
-                    const Text('将按最新正式净值计算份额，并反推出持有成本。收益率需大于 -100%。'),
+                    const Text(
+                      '份额 = 持有金额 ÷ 最新正式净值；持有成本 = 持有金额 - 持有收益。亏损请输入负数。',
+                    ),
                   ],
                   if (entryMode != 'holding') ...[
                     const SizedBox(height: 16),
@@ -633,7 +634,7 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
   @override
   void dispose() {
     value.dispose();
-    holdingReturn.dispose();
+    holdingProfit.dispose();
     fee.dispose();
     note.dispose();
     source.dispose();
