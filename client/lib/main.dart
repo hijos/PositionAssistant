@@ -1206,7 +1206,7 @@ class _OverviewRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final trailing = this.trailing;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           SizedBox(
