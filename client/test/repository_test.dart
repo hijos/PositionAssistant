@@ -58,6 +58,8 @@ void main() {
       'type': '混合型',
       'nav': 3.456,
       'navDate': '2026-09-24',
+      'estimatedNav': 3.5,
+      'estimateRuleVersion': 'qqq-fx-v1',
     });
     await repository.put('transactions', 'buy', {
       'fundCode': '000001',
@@ -89,6 +91,8 @@ void main() {
     expect(item['marketValue'], 27.65);
     expect(item['profit'], 11.65);
     expect(item['profitRate'], closeTo(11.65 / 16, 1e-12));
+    expect(item['estimatedProfit'], 12.0);
+    expect(item['estimatedProfitRate'], closeTo(12.0 / 16, 1e-12));
   });
 
   test(

@@ -115,6 +115,9 @@ class LocalHoldingRepository implements HoldingRepository {
         'estimatedNav': estimateValid ? estimatedNav : null,
         'estimatedMarketValue': estimatedMarketValue,
         'estimatedProfit': estimatedProfit,
+        'estimatedProfitRate': estimatedProfit == null || cost == 0
+            ? null
+            : estimatedProfit / cost,
         'estimateAt': fund?['estimateAt'],
         'estimateSource': fund?['estimateSource'],
         'estimateCoverage': fund?['estimateCoverage'],
