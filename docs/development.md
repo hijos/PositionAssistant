@@ -128,6 +128,18 @@ Android 本地模式不依赖持仓助手服务端：`client/lib/data/nav_reposi
 天弘官方基金详情页入口已确认：`https://www.thfund.com.cn/fundinfo/{code}`。浏览器可见页面会显示申购状态；当前已验证 018043 显示“申购状态：关闭”，按业务规则对应直销额度 0。由于服务端请求仍可能命中阿里云 WAF，天弘自动采集保持关闭，避免将挑战页误当基金数据。；目录中“摩根”基金已确认使用摩根基金（cifm.com），不是摩根士丹利基金，待确认其公开直销产品页或公告入口后再加入配置。直销适配器返回 `fund-manager-page` 来源类型；自动刷新会分别统计代销更新、直销更新、直销不可用和失败数量。手动覆盖支持 `channel=direct|distribution`，并保存为 `channels.<channel>.<field>` 覆盖字段。 南方基金另有公开 `subscriptionAndRedemptionStatus` 接口，适配器会按基金代码读取状态与官方备注；基金公司官方页面、官方公告和官方接口默认按直销口径解释；同时保留 `officialRestriction` 和来源信息，便于后续发现渠道例外时修正。
 
 本机验证：`node --check server/index.js`、`node --check server/quota-sources/direct-config.js`、`node --check server/quota-sources/fund-manager.js`、`node --test test/quota-direct-config.test.js test/quotas.test.js test/quotas-http.test.js`。
+
+## 独立额度子服务（手工数据第一版）
+
+额度子服务位于 `quota-service/`，启动入口为 `quota-service/index.js`，不依赖 `server/index.js`、持仓账号或持仓数据库。第一版不执行上游爬取，管理员通过独立管理页面手动维护基金名称、纳斯达克100/标普500分类、直销/代销状态、单日额度和渠道费率。公共 App 接口为 `GET /api/quotas`，纠错提交接口为 `POST /api/corrections`。
+
+Windows 局域网开发时设置 `QUOTA_ADMIN_PASSWORD`（至少 8 个字符），再运行 `npm run start:quota`。服务默认监听 `0.0.0.0:4100`，手机与电脑连接同一 WiFi 后使用 `http://电脑局域网IP:4100`；Windows 防火墙需要允许专用网络的 TCP 4100 入站访问。管理页面位于根路径，健康检查为 `/health`。额度数据默认写入被 Git 忽略的 `quota-service/data/db.json`。
+
+Flutter 使用独立的 `QUOTA_SERVICE_URL`，当前开发机地址为 `http://192.168.31.143:4100`。运行 `scripts\build-apk.bat` 时，脚本会自动把这个地址编译进 debug/release APK；Android 构建允许局域网 HTTP，正式环境应改用 HTTPS。App 的额度读取、云端版本刷新和“保存并上传”都走该地址。App 的“保存”只保存个人覆盖，“保存并上传”在个人保存成功后额外提交纠错建议，上传失败不会撤回个人保存。
+
+纠错按服务端看到的来源 IP 做哈希去重，同一基金、渠道和云端版本内每个 IP 只保留一票。自动采纳同时要求达到最低支持数和一致性比例，默认是 3 个来源、80%、72 小时窗口；管理员可在管理页面调整。每次手工修改、共识覆盖和管理员撤销均写入审计记录。撤销只允许针对之后没有新数据更新的共识版本。
+
+本机验证：`npm run test:quota-service`、`node --check quota-service/index.js`、`node --test test/quotas.test.js test/quotas-http.test.js`；客户端验证：在 `client/` 执行 `flutter analyze`、`flutter test test/quota_repository_test.dart`。管理密码和 IP 哈希盐不得提交到仓库。
 ## F37 用户额度覆盖、优先级和隔离
 
 额度自动记录与用户覆盖记录按同一基金代码分开保存。`PUT /api/quotas/:code` 只写入当前
@@ -182,8 +194,6 @@ Android 本地设置页使用系统 `ACTION_OPEN_DOCUMENT` 选择 JSON 文件；
 - **历史实现缺口核实**：当前 `server/index.js` 注册/登录实际仍用 `data/db.json` 用户和进程内 sessions，尚未使用 `0002_users.sql`。因此 F13 的 PostgreSQL `owner_id` 暂用既有账号字符串，不伪造 users 外键；部署必须保留原 JSON 用户文件。未来迁移认证必须保留或显式映射 owner_id。服务重启会失效会话，账号保存的基金仍在 PostgreSQL。此处不代表 F06–F10 验收通过。
 - 本机测试：`node --test test/funds.test.js`；Flutter `flutter test`。Linux 专项数据库测试复用 `TEST_DATABASE_URL=... node --test test/catalog.integration.test.js` 的随机临时数据库流程，新增跨连接并发添加及账号隔离断言；需要独立测试实例和 CREATEDB 权限。
 - Linux 联调：使用两个账号分别登录；一个账号添加相同代码多次，列表只有一项，另一个账号列表为空；重启服务后重新登录仍可读取。Android 本地添加后关闭重开、切远端再切回，本地记录应保留且不出现在远端。真实目录筛选及设备网络仍需验收。
-
-
 
 
 

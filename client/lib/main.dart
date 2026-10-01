@@ -60,11 +60,9 @@ class _HomeShellState extends State<HomeShell> {
     () => localStorage ??= openLocalRepository(),
   );
   RemoteFundRepository? remoteFunds;
-  late final LocalAutomaticQuotaRepository localQuotas =
-      LocalAutomaticQuotaRepository(
-        () => localStorage ??= openLocalRepository(),
-      );
-  RemoteQuotaRepository? remoteQuotas;
+  late final CloudQuotaRepository cloudQuotas = CloudQuotaRepository(
+    open: !kIsWeb ? () => localStorage ??= openLocalRepository() : null,
+  );
   LocalTransactionRepository? localTransactions;
   RemoteTransactionRepository? remoteTransactions;
   LocalHoldingRepository? localHoldings;
@@ -104,9 +102,7 @@ class _HomeShellState extends State<HomeShell> {
     super.initState();
     if (localMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (localMode) localCatalog.refreshIfStale();
-        if (mounted) setState(reloadFunds);
-        unawaited(_confirmPendingTransactions());
+        unawaited(_initializeLocalMode());
       });
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -138,11 +134,31 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
+  Future<void> _initializeLocalMode() async {
+    await _loadInitialLocalData();
+    await _confirmPendingTransactions();
+  }
+
+  Future<void> _loadInitialLocalData() async {
+    if (!localMode) return;
+    try {
+      final funds = await localFunds.list();
+      final holdings = await currentHoldings?.list() ?? const <Map<String, dynamic>>[];
+      if (!mounted || !localMode) return;
+      setState(() {
+        savedFunds = Future.value(funds);
+        savedHoldings = Future.value(holdings);
+      });
+    } catch (_) {
+      // Local storage is unavailable in desktop previews; keep the empty state.
+    }
+  }
+
   void reloadFunds() {
     if (localMode) _refreshLocalNav();
-    savedFunds = currentFunds?.list();
+    savedFunds = currentFunds?.list().catchError((_) => <Map<String, dynamic>>[]);
     savedFunds?.ignore();
-    savedHoldings = currentHoldings?.list();
+    savedHoldings = currentHoldings?.list().catchError((_) => <Map<String, dynamic>>[]);
     savedHoldings?.ignore();
   }
 
@@ -152,17 +168,25 @@ class _HomeShellState extends State<HomeShell> {
   /// latest published NAV. Failures keep the previous values.
   void _refreshLocalNav() {
     if (defaultTargetPlatform != TargetPlatform.android) return;
+    if (localStorage == null) return;
+    unawaited(_refreshLocalNavAsync());
+  }
+
+  Future<void> _refreshLocalNavAsync() async {
     final nav = localNav ??= LocalNavRepository(
       () => localStorage ??= openLocalRepository(),
     );
-    nav.refreshLatest().then((_) {
+    try {
+      await nav.refreshLatest();
       if (!mounted || !localMode) return;
       setState(() {
         savedFunds = localFunds.list()..ignore();
         savedHoldings = currentHoldings?.list();
         savedHoldings?.ignore();
       });
-    }, onError: (_) {});
+    } catch (_) {
+      // Local NAV refresh is a background enhancement; cached data remains usable.
+    }
   }
 
   /// Removes a watchlist entry after the long-press sheet ([FundListTile]) has
@@ -213,8 +237,6 @@ class _HomeShellState extends State<HomeShell> {
       remoteTransactions?.close();
       remoteHoldings?.close();
       remoteFunds = RemoteFundRepository(token: token);
-      remoteQuotas?.close();
-      remoteQuotas = RemoteQuotaRepository(token: token);
       remoteTransactions = RemoteTransactionRepository(token: token);
       remoteHoldings = RemoteHoldingRepository(token: token);
       reloadFunds();
@@ -228,8 +250,6 @@ class _HomeShellState extends State<HomeShell> {
     final oldHoldings = remoteHoldings;
     setState(() {
       remoteFunds = null;
-      remoteQuotas?.close();
-      remoteQuotas = null;
       remoteTransactions = null;
       remoteHoldings = null;
       if (!localMode) savedFunds = null;
@@ -266,23 +286,25 @@ class _HomeShellState extends State<HomeShell> {
     return updated;
   }
 
+  Future<List<Map<String, dynamic>>> _loadFundsForEntry() async {
+    try {
+      return await (currentFunds?.list() ??
+          Future.value(const <Map<String, dynamic>>[]));
+    } catch (_) {
+      return const <Map<String, dynamic>>[];
+    }
+  }
+
   Future<void> openTransactionEntry() async {
     if (!localMode && remoteFunds == null) await login();
     if (!mounted) return;
     final transactions = currentTransactions;
     if (transactions == null) return;
-    List<Map<String, dynamic>> funds = [];
-    try {
-      funds = await (currentFunds?.list() ?? Future.value([]));
-    } catch (_) {
-      // The page still explains that a fund must be added when local storage
-      // is unavailable in a preview/test environment.
-    }
-    if (!mounted) return;
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => TransactionEntryPage(
-          funds: funds,
+          funds: const [],
+          fundsFuture: _loadFundsForEntry(),
           repository: transactions,
           onSearchAndAdd: openSearch,
         ),
@@ -419,6 +441,7 @@ class _HomeShellState extends State<HomeShell> {
     remoteFunds?.close();
     remoteTransactions?.close();
     remoteHoldings?.close();
+    cloudQuotas.close();
     localCatalog.close();
     localStorage?.then((storage) => storage.close(), onError: (_) {});
     super.dispose();
@@ -681,18 +704,11 @@ class _HomeShellState extends State<HomeShell> {
     floatingActionButton: selected == 2 ? _watchlistFab() : null,
     body: SafeArea(
       child: selected == 3
-          ? (localMode || remoteQuotas != null
-                ? QuotaPage(
-                    key: ValueKey(localMode ? 'local-quota' : remoteQuotas),
-                    repository: localMode ? localQuotas : remoteQuotas!,
-                    refreshToken: quotaRefreshToken,
-                  )
-                : Center(
-                    child: FilledButton(
-                      onPressed: login,
-                      child: const Text('登录查看额度'),
-                    ),
-                  ))
+          ? QuotaPage(
+              key: const ValueKey('cloud-quota'),
+              repository: cloudQuotas,
+              refreshToken: quotaRefreshToken,
+            )
           : selected == 1
           ? _transactionBody()
           : Center(

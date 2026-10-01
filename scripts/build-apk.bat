@@ -10,6 +10,7 @@ rem ============================================
 set "ROOT=%~dp0.."
 set "CLIENT=%ROOT%\client"
 set "FLUTTER=%ROOT%\.tooling\flutter\bin\flutter.bat"
+set "QUOTA_SERVICE_URL=http://192.168.31.143:4100"
 
 if /i "%~1"=="debug" (set "MODE=debug") else (set "MODE=release")
 
@@ -18,9 +19,9 @@ if not exist "%FLUTTER%" (
     exit /b 1
 )
 
-echo [1/2] flutter build apk --%MODE% ...
+echo [1/2] flutter build apk --%MODE% with quota service %QUOTA_SERVICE_URL% ...
 pushd "%CLIENT%"
-call "%FLUTTER%" build apk --%MODE%
+call "%FLUTTER%" build apk --%MODE% --dart-define=QUOTA_SERVICE_URL=%QUOTA_SERVICE_URL%
 if errorlevel 1 (
     popd
     echo [ERROR] build failed

@@ -8,6 +8,30 @@ typedef Quota = Map<String, dynamic>;
 
 typedef QuotaChannel = Map<String, dynamic>;
 
+Uri quotaServiceUri(String path) {
+  const configured = String.fromEnvironment('QUOTA_SERVICE_URL');
+  final base = configured.isNotEmpty
+      ? Uri.parse(configured)
+      : Uri.parse('http://127.0.0.1:4100');
+  return base.resolve(path);
+}
+
+class QuotaUploadResult {
+  const QuotaUploadResult({
+    required this.status,
+    this.duplicate = false,
+    this.appliedAuditId,
+    this.summary,
+  });
+
+  final String status;
+  final bool duplicate;
+  final String? appliedAuditId;
+  final Map<String, dynamic>? summary;
+
+  bool get applied => status == 'applied';
+}
+
 String? quotaCategory(String name) {
   if (RegExp(r'纳斯达克\s*100|纳指\s*100|NASDAQ\s*100', caseSensitive: false).hasMatch(name)) return '纳斯达克100';
   if (RegExp(r'标普\s*500|S&P\s*500|SP500', caseSensitive: false).hasMatch(name)) return '标普500';
@@ -60,6 +84,8 @@ Quota normalizeQuota(Quota raw) {
   };
   final channels = <String, dynamic>{};
   final rawChannels = source['channels'];
+  final legacyChannels = rawChannels is Map ? rawChannels.values.whereType<Map>() : const <Map>[];
+  final legacyFeeRate = source['feeRate'] ?? (legacyChannels.isEmpty ? null : legacyChannels.first['feeRate']);
   if (rawChannels is Map) {
     for (final entry in rawChannels.entries) {
       channels['${entry.key}'] = normalizeQuotaChannel(entry.value is Map ? Map<String, dynamic>.from(entry.value) : null, source);
@@ -79,6 +105,7 @@ Quota normalizeQuota(Quota raw) {
   return {
     ...source,
     'channels': channels,
+    'feeRate': legacyFeeRate == null ? null : num.tryParse('$legacyFeeRate')?.toDouble(),
     'preferredChannel': preferred,
     'dataQuality': source['dataQuality'] ?? (channels.values.any((item) => item['sourceType'] == 'fund-manager-page' || item['sourceType'] == 'fund-manager-announcement') ? 'verified' : 'public'),
     'status': selected['status'] ?? '未知',
@@ -165,6 +192,55 @@ abstract interface class QuotaRepository {
   Future<List<Quota>> refresh();
   Future<void> setOverride(String code, Quota fields);
   Future<void> restore(String code);
+  Future<QuotaUploadResult> uploadCorrection(String code, Quota fields);
+}
+
+Map<String, dynamic> mergeQuotaOverride(Quota base, Quota? override) {
+  if (override == null) {
+    return {
+      ...normalizeQuota(base),
+      'valueSource': 'automatic',
+      'priority': 'automatic',
+      'userOverride': false,
+      'overrideFields': <String>[],
+    };
+  }
+  final channels = <String, dynamic>{};
+  final rawChannels = base['channels'];
+  if (rawChannels is Map) {
+    for (final entry in rawChannels.entries) {
+      channels['${entry.key}'] = normalizeQuotaChannel(
+        entry.value is Map
+            ? Map<String, dynamic>.from(entry.value as Map)
+            : null,
+      );
+    }
+  }
+  final fields = (override['overrideFields'] as List?)
+          ?.map((value) => '$value')
+          .toList() ??
+      <String>[];
+  for (final field in fields) {
+    final parts = field.split('.');
+    if (parts.length != 3 || parts[0] != 'channels') continue;
+    final channel = parts[1];
+    final name = parts[2];
+    final current = channels[channel] is Map
+        ? Map<String, dynamic>.from(channels[channel] as Map)
+        : <String, dynamic>{};
+    current[name] = override[field] ?? override[name];
+    channels[channel] = normalizeQuotaChannel(current);
+  }
+  final result = normalizeQuota({...base, 'channels': channels});
+  return {
+    ...result,
+    'valueSource': 'user',
+    'priority': 'user',
+    'userOverride': true,
+    'overrideFields': fields,
+    'automaticChannels': base['channels'],
+    'automaticRevision': base['revision'],
+  };
 }
 
 class LocalAutomaticQuotaRepository implements QuotaRepository {
@@ -181,18 +257,8 @@ class LocalAutomaticQuotaRepository implements QuotaRepository {
     final overrides = {for (final q in await storage.list('quotaOverrides')) '${q['code']}': q};
     return {...bases, ...overrides}.keys.map((code) {
       final base = bases[code]; final user = overrides[code];
-      if (base == null) return normalizeQuota({...?(user ?? <String, dynamic>{}), 'valueSource': 'user', 'priority': 'user'});
-      final fields = (user?['overrideFields'] as List?)?.map((value) => '').toList() ?? <String>[];
-      final channels = <String, dynamic>{for (final entry in (base['channels'] as Map).entries) entry.key: normalizeQuotaChannel(entry.value is Map ? Map<String, dynamic>.from(entry.value as Map) : null)};
-      for (final field in fields) {
-        final parts = field.split('.');
-        if (parts.length == 3 && parts[0] == 'channels') {
-          final channel = parts[1]; channels[channel] = normalizeQuotaChannel({...?(channels[channel] is Map ? Map<String, dynamic>.from(channels[channel] as Map) : <String, dynamic>{}), parts[2]: user?[field] ?? user?[parts[2]]});
-        } else if (field == 'status' || field == 'limit') {
-          channels['distribution'] = normalizeQuotaChannel({...?(channels['distribution'] is Map ? Map<String, dynamic>.from(channels['distribution'] as Map) : <String, dynamic>{}), field: user?[field]});
-        }
-      }
-      return {...normalizeQuota({...base, 'channels': channels}), 'valueSource': user == null ? 'automatic' : 'user', 'priority': user == null ? 'automatic' : 'user', 'userOverride': user != null, 'overrideFields': fields, if (user != null) 'automaticChannels': base['channels']};
+      if (base == null) return normalizeQuota({...user ?? <String, dynamic>{}, 'valueSource': 'user', 'priority': 'user'});
+      return mergeQuotaOverride(base, user);
     }).toList();
   }
   @override Future<List<Quota>> refresh() => _refreshing ??= _refresh().whenComplete(() => _refreshing = null);
@@ -222,12 +288,191 @@ class LocalAutomaticQuotaRepository implements QuotaRepository {
     final storage = await open(); final base = await storage.get('quotas', code); final old = await storage.get('quotaOverrides', code);
     if (base == null && old == null) throw const FormatException('额度记录不存在');
     final channel = '${fields['channel'] ?? 'distribution'}'; final patch = Map<String, dynamic>.from(fields)..remove('channel');
-    final keys = <String>{...((old?['overrideFields'] as List?)?.map((value) => '') ?? const <String>[]), ...patch.keys.map((key) => 'channels..')};
+    if (!['distribution', 'direct'].contains(channel)) throw const FormatException('渠道无效');
+    final keys = <String>{...((old?['overrideFields'] as List?)?.map((value) => '$value') ?? const <String>[])};
     for (final key in patch.keys) { if (key == 'status' && !['开放申购', '暂停申购', '限大额', '未知'].contains(patch[key])) throw const FormatException('申购状态无效'); if (key == 'limit') patch[key] = quotaAmount(patch[key]); }
-    await storage.put('quotaOverrides', code, {...?(old ?? <String, dynamic>{}), 'code': code, 'name': base?['name'] ?? old?['name'], 'channels': base?['channels'], ...patch, 'overrideFields': keys.toList(), 'valueSource': 'user', 'updatedAt': DateTime.now().toUtc().toIso8601String()});
+    for (final key in patch.keys) {
+      keys.add('channels.$channel.$key');
+    }
+    await storage.put('quotaOverrides', code, {...old ?? <String, dynamic>{}, 'code': code, 'name': base?['name'] ?? old?['name'], 'channels': base?['channels'], ...patch, 'overrideFields': keys.toList(), 'valueSource': 'user', 'updatedAt': DateTime.now().toUtc().toIso8601String()});
   }
   @override Future<void> restore(String code) async { final storage = await open(); await storage.delete('quotaOverrides', code); }
+  @override Future<QuotaUploadResult> uploadCorrection(String code, Quota fields) async => throw Exception('额度云端服务未配置');
   void close() { source.close(); directSource.close(); catalog.close(); }
+}
+
+class CloudQuotaRepository implements QuotaRepository {
+  CloudQuotaRepository({this.open, http.Client? client}) : client = client ?? http.Client();
+
+  final Future<Repository> Function()? open;
+  final http.Client client;
+  List<Quota> _items = [];
+  final Map<String, Quota> _overrides = {};
+  int? _version;
+  String? _updateNotice;
+
+  String? takeUpdateNotice() {
+    final value = _updateNotice;
+    _updateNotice = null;
+    return value;
+  }
+
+  Future<dynamic> _request(String path, {String method = 'GET', Map<String, dynamic>? body, Map<String, String>? headers}) async {
+    final mergedHeaders = {'Content-Type': 'application/json', ...?headers};
+    final uri = quotaServiceUri(path);
+    final response = await (method == 'POST'
+            ? client.post(uri, headers: mergedHeaders, body: body == null ? null : jsonEncode(body))
+            : client.get(uri, headers: mergedHeaders))
+        .timeout(const Duration(seconds: 30));
+    final decoded = response.body.isEmpty ? null : jsonDecode(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(decoded is Map ? decoded['error'] ?? '额度云端服务请求失败' : '额度云端服务请求失败');
+    }
+    return decoded;
+  }
+
+  Future<void> _loadLocal() async {
+    if (open == null) return;
+    final storage = await open!();
+    _items = (await storage.list('quotas')).map(normalizeQuota).toList();
+    final meta = await storage.get('quotaServiceMeta', 'state');
+    _version = int.tryParse('${meta?['version']}');
+    _overrides
+      ..clear()
+      ..addEntries((await storage.list('quotaOverrides')).map((item) => MapEntry('${item['code']}', item)));
+  }
+
+  Future<List<Quota>> _visible() async {
+    await _loadLocal();
+    final byCode = <String, Quota>{
+      for (final item in _items) '${item['code']}': normalizeQuota(item),
+    };
+    for (final entry in _overrides.entries) {
+      final base = byCode[entry.key];
+      if (base == null) {
+        byCode[entry.key] = normalizeQuota({
+          ...entry.value,
+          'valueSource': 'user',
+          'priority': 'user',
+          'userOverride': true,
+        });
+      } else {
+        byCode[entry.key] = mergeQuotaOverride(base, entry.value);
+      }
+    }
+    return byCode.values.toList();
+  }
+
+  @override
+  Future<List<Quota>> list() async => _visible();
+
+  @override
+  Future<List<Quota>> refresh() async {
+    final decoded = await _request('/api/quotas');
+    if (decoded is! Map || decoded['items'] is! List) throw Exception('额度云端服务响应无效');
+    final version = int.tryParse('${decoded['version']}');
+    if (_version != null && version != null && version > _version!) {
+      _updateNotice = '云端额度已有更新，可在修改弹窗中恢复云端数据';
+    }
+    _version = version;
+    final next = (decoded['items'] as List)
+        .whereType<Map>()
+        .map((item) => normalizeQuota(Map<String, dynamic>.from(item)))
+        .toList();
+    _items = next;
+    if (open != null) {
+      final storage = await open!();
+      await storage.transaction((session) async {
+        for (final old in await session.list('quotas')) {
+          await session.delete('quotas', '${old['code']}');
+        }
+        for (final item in next) {
+          await session.put('quotas', '${item['code']}', item);
+        }
+        await session.put('quotaServiceMeta', 'state', {
+          'version': version,
+          'updatedAt': decoded['updatedAt'],
+        });
+      });
+    }
+    return _visible();
+  }
+
+  @override
+  Future<void> setOverride(String code, Quota fields) async {
+    final channel = '${fields['channel'] ?? 'distribution'}';
+    if (!['distribution', 'direct'].contains(channel)) throw const FormatException('渠道无效');
+    final patch = Map<String, dynamic>.from(fields)..remove('channel');
+    if (patch['status'] != null && !['开放申购', '暂停申购', '限大额', '未知'].contains(patch['status'])) {
+      throw const FormatException('申购状态无效');
+    }
+    if (patch.containsKey('limit')) patch['limit'] = quotaAmount(patch['limit']);
+    final old = _overrides[code];
+    final oldFields = (old?['overrideFields'] as List?)?.map((value) => '$value').toSet() ?? <String>{};
+    final override = <String, dynamic>{
+      ...?old,
+      'code': code,
+      'channels': _items.firstWhere((item) => '${item['code']}' == code, orElse: () => <String, dynamic>{'code': code})['channels'],
+      ...patch,
+      'overrideFields': {
+        ...oldFields,
+        for (final key in patch.keys) 'channels.$channel.$key',
+      }.toList(),
+      'valueSource': 'user',
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+    for (final key in patch.keys) {
+      override['channels.$channel.$key'] = patch[key];
+    }
+    _overrides[code] = override;
+    if (open != null) await (await open!()).put('quotaOverrides', code, override);
+  }
+
+  @override
+  Future<void> restore(String code) async {
+    _overrides.remove(code);
+    if (open != null) await (await open!()).delete('quotaOverrides', code);
+  }
+
+  @override
+  Future<QuotaUploadResult> uploadCorrection(String code, Quota fields) async {
+    // Keep retries of the same correction tied to one server-side record.
+    // The cloud revision makes a later correction produce a new key after a
+    // consensus update or an administrator edit.
+    final idempotency = _correctionIdempotencyKey(code, fields);
+    final clientId = 'app-${DateTime.now().microsecondsSinceEpoch}';
+    final body = {
+      'code': code,
+      'channel': fields['channel'] ?? 'distribution',
+      'status': fields['status'],
+      'limit': fields['limit'],
+      if (fields['revision'] != null) 'baseRevision': fields['revision'],
+    };
+    final decoded = await _request('/api/corrections', method: 'POST', body: body, headers: {
+      'X-Client-Id': clientId,
+      'X-Idempotency-Key': idempotency,
+    });
+    if (decoded is! Map) throw Exception('额度纠错响应无效');
+    return QuotaUploadResult(
+      status: '${decoded['status'] ?? 'pending'}',
+      duplicate: decoded['duplicate'] == true,
+      appliedAuditId: decoded['appliedAuditId'] as String?,
+      summary: decoded['summary'] is Map ? Map<String, dynamic>.from(decoded['summary']) : null,
+    );
+  }
+
+  String _correctionIdempotencyKey(String code, Quota fields) {
+    final canonical = jsonEncode({
+      'code': code,
+      'channel': fields['channel'] ?? 'distribution',
+      'status': fields['status'] ?? '未知',
+      'limit': fields['limit'] == null ? null : quotaAmount(fields['limit']),
+      'baseRevision': fields['revision'],
+    });
+    return 'quota-${base64Url.encode(utf8.encode(canonical))}';
+  }
+
+  void close() => client.close();
 }
 
 class RemoteQuotaRepository implements QuotaRepository {
@@ -243,10 +488,6 @@ class RemoteQuotaRepository implements QuotaRepository {
   @override Future<List<Quota>> refresh() async => ((await _request('/refresh', method: 'POST'))['items'] as List).cast<Quota>().map(normalizeQuota).toList();
   @override Future<void> setOverride(String code, Quota fields) async { await _request('/$code', method: 'PUT', fields: fields); }
   @override Future<void> restore(String code) async { await _request('/$code/restore', method: 'POST'); }
+  @override Future<QuotaUploadResult> uploadCorrection(String code, Quota fields) async => throw Exception('额度云端服务未配置');
   void close() => client.close();
 }
-
-
-
-
-

@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:position_assistant/main.dart';
+import 'package:position_assistant/offline_pages.dart';
 import 'package:position_assistant/transaction_history.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
+  setUpAll(() {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  });
   for (final size in [const Size(320, 640), const Size(1280, 800)]) {
     testWidgets('navigation and reorganized pages at $size', (tester) async {
+      Future<void> settleRoute() async {
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump();
+      }
+
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -31,13 +42,13 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       await tester.tap(find.text('添加持仓'));
-      await tester.pumpAndSettle();
-      expect(find.text('暂无可用基金'), findsOneWidget);
+      await settleRoute();
+      expect(find.text('交易录入'), findsOneWidget);
       await tester.pageBack();
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 1));
 
       await tester.tap(find.text('交易').last);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 1));
       expect(find.byType(TransactionHistoryPage), findsOneWidget);
       expect(find.byType(AppBar), findsOneWidget);
       expect(find.text('交易记录'), findsOneWidget);
@@ -47,19 +58,20 @@ void main() {
       expect(find.byTooltip('清理已取消交易'), findsOneWidget);
 
       await tester.tap(find.text('自选').last);
-      await tester.pumpAndSettle();
+      await settleRoute();
       expect(find.byType(AppBar), findsNothing);
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.byTooltip('清理已取消交易'), findsNothing);
       expect(find.textContaining('已添加基金'), findsNothing);
+      await tester.pump(const Duration(seconds: 1));
       await tester.tap(find.byType(FloatingActionButton));
-      await tester.pumpAndSettle();
+      await settleRoute();
       expect(find.text('基金名称或代码'), findsOneWidget);
       await tester.pageBack();
-      await tester.pumpAndSettle();
+      await settleRoute();
 
       await tester.tap(find.text('持仓').last);
-      await tester.pumpAndSettle();
+      await settleRoute();
       // The holdings tab carries its own overview card, so the shell hides
       // the app bar there; the same holds for the settings tab below.
       expect(find.byType(AppBar), findsNothing);
@@ -69,30 +81,22 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       await tester.tap(find.text('定投计划'));
-      await tester.pumpAndSettle();
-      expect(find.text('定投计划'), findsOneWidget);
+      await settleRoute();
+      expect(find.byType(LocalPlansPage), findsOneWidget);
       expect(find.text('页面预览'), findsNothing);
       await tester.pageBack();
-      await tester.pumpAndSettle();
+      await settleRoute();
 
       await tester.tap(find.text('额度').last);
-      await tester.pumpAndSettle();
+      await settleRoute();
       // The quota tab now renders its own content without a shell app bar,
       // mirroring the holdings/watchlist/settings tabs.
       expect(find.byType(AppBar), findsNothing);
-      await tester.scrollUntilVisible(
-        find.text('额度详情与手动修改'),
-        160,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.tap(find.text('额度详情与手动修改'));
-      await tester.pumpAndSettle();
-      expect(find.text('额度列表'), findsOneWidget);
-      await tester.pageBack();
-      await tester.pumpAndSettle();
+      expect(find.text('额度'), findsWidgets);
+      expect(find.text('保存并上传'), findsNothing);
 
       await tester.tap(find.text('设置').last);
-      await tester.pumpAndSettle();
+      await settleRoute();
       expect(find.byType(AppBar), findsNothing);
       // Local mode hides the account section entirely; switching to remote
       // mode via the segmented control reveals the login entry.
@@ -100,7 +104,7 @@ void main() {
       expect(find.text('远端账号'), findsNothing);
       expect(find.text('登录'), findsNothing);
       await tester.tap(find.text('远端模式'));
-      await tester.pumpAndSettle();
+      await settleRoute();
       expect(find.text('远端账号'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('登录'),
@@ -108,10 +112,10 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       await tester.tap(find.text('登录'));
-      await tester.pumpAndSettle();
+      await settleRoute();
       expect(find.text('邮箱'), findsOneWidget);
       await tester.pageBack();
-      await tester.pumpAndSettle();
+      await settleRoute();
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

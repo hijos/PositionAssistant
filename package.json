@@ -9,7 +9,9 @@
     "test:catalog": "node --test test/catalog.test.js",
     "test:catalog:integration": "node --test test/catalog.integration.test.js",
     "test:nav": "node --test test/nav.test.js",
-    "test:market": "node --test test/market.test.js"
+    "test:market": "node --test test/market.test.js",
+    "start:quota": "node quota-service/index.js",
+    "test:quota-service": "node --test test/quota-service.test.js"
   },
   "dependencies": {
     "express": "^4.21.2",

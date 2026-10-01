@@ -26,3 +26,6 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.log
+# Quota service development configuration
+quota-service/.env
+quota-service/data/

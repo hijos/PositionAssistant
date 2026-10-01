@@ -61,7 +61,14 @@ class _QuotaPageState extends State<QuotaPage> {
     }
   }
 
-  void _autoRefresh() => run(() async { await widget.repository.refresh(); });
+  void _autoRefresh() => run(() async {
+    await widget.repository.refresh();
+    if (!mounted || widget.repository is! CloudQuotaRepository) return;
+    final notice = (widget.repository as CloudQuotaRepository).takeUpdateNotice();
+    if (notice != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(notice)));
+    }
+  });
 
   QuotaChannel channel(Quota q, String name) {
     final raw = q['channels'];
@@ -91,20 +98,53 @@ class _QuotaPageState extends State<QuotaPage> {
         Text('当上传某特定额度的用户足够多时，会自动修正云端额度数据。', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ]),
       actions: [
-        Row(children: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          const Spacer(),
-          FilledButton(onPressed: () => Navigator.pop(context, {'upload': false, 'fields': {'channel': selected, 'status': quotaStatus(status.text), 'limit': quotaAmount(limit.text)}}), child: const Text('保存')),
-          const SizedBox(width: 8),
-          FilledButton(onPressed: () => Navigator.pop(context, {'upload': true, 'fields': {'channel': selected, 'status': quotaStatus(status.text), 'limit': quotaAmount(limit.text)}}), child: const Text('保存并上传')),
-        ]),
+        OverflowBar(
+          spacing: 8,
+          overflowSpacing: 4,
+          children: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+            OutlinedButton(onPressed: () => Navigator.pop(context, {'upload': false, 'fields': {'channel': selected, 'status': quotaStatus(status.text), 'limit': quotaAmount(limit.text)}}), child: const Text('保存')),
+            FilledButton(onPressed: () => Navigator.pop(context, {'upload': true, 'fields': {'channel': selected, 'status': quotaStatus(status.text), 'limit': quotaAmount(limit.text)}}), child: const Text('保存并上传')),
+          ],
+        ),
       ],
     )));
+    status.dispose();
+    limit.dispose();
     if (result == null || !mounted) return;
     final fields = Map<String, dynamic>.from(result['fields'] as Map);
-    await run(() => widget.repository.setOverride('${q['code']}', fields));
-    // TODO(quota-service): result['upload'] == true 时把 fields 上报到额度子服务 /api/corrections；
-    // 子服务未部署前仅本地保存。
+    final shouldUpload = result['upload'] == true;
+    if (busy) return;
+    setState(() { busy = true; error = null; });
+    String? message;
+    try {
+      await widget.repository.setOverride('${q['code']}', fields);
+      if (!shouldUpload) {
+        message = '已保存到本机';
+      } else {
+        final upload = await widget.repository.uploadCorrection('${q['code']}', {
+          ...fields,
+          'revision': q['revision'],
+        });
+        message = upload.applied
+            ? '已保存，云端额度已根据用户共识更新'
+            : upload.duplicate
+                ? '已保存，这条纠错已经上传过'
+                : '已保存并上传，等待更多用户确认';
+      }
+    } catch (e) {
+      if (shouldUpload) {
+        message = '已保存，但上传失败：$e';
+      } else if (mounted) {
+        setState(() => error = '$e');
+      }
+    } finally {
+      await load();
+      if (mounted) {
+        setState(() => busy = false);
+        if (message != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      }
+    }
   }
 
   dynamic sortValue(Quota q) {
@@ -258,11 +298,11 @@ class _QuotaPageState extends State<QuotaPage> {
               ),
               const SizedBox(width: 12),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                _placeholderLine(theme, scheme, '代销'),
+                _channelLine(theme, scheme, '代销', channel(q, 'distribution')),
                 const SizedBox(height: 2),
-                _placeholderLine(theme, scheme, '直销'),
+                _channelLine(theme, scheme, '直销', channel(q, 'direct')),
                 const SizedBox(height: 4),
-                _placeholderLine(theme, scheme, '费率'),
+                Text('费率 ${_feeRateText(q)}', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
               ]),
             ]),
             Row(children: [
@@ -275,10 +315,30 @@ class _QuotaPageState extends State<QuotaPage> {
     );
   }
 
-  Widget _placeholderLine(ThemeData theme, ColorScheme scheme, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
+  Widget _channelLine(ThemeData theme, ColorScheme scheme, String label, QuotaChannel value) => Row(mainAxisSize: MainAxisSize.min, children: [
     Text('${label} ', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-    Text('-', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+    Text(_channelValueText(value), style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
   ]);
+
+  String _channelValueText(QuotaChannel value) {
+    final status = '${value['status'] ?? '未知'}';
+    if (status == '限大额') return _limitText(value);
+    if (status == '未知') return '未披露';
+    return status;
+  }
+
+  String _limitText(QuotaChannel value) {
+    final raw = quotaAmount(value['limit']);
+    if (raw == null) return '-';
+    if (raw >= 100000000) return '${(raw / 100000000).toStringAsFixed(raw % 100000000 == 0 ? 0 : 2)}亿';
+    if (raw >= 10000) return '${(raw / 10000).toStringAsFixed(raw % 10000 == 0 ? 0 : 2)}万';
+    return raw.toStringAsFixed(0);
+  }
+
+  String _feeRateText(Quota q) {
+    final value = num.tryParse('${q['feeRate']}');
+    return value == null ? '-' : '${(value * 100).toStringAsFixed(2)}%';
+  }
 
   Widget _badge(ColorScheme scheme, String text) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'data/transaction_repository.dart';
@@ -7,12 +9,14 @@ class TransactionEntryPage extends StatefulWidget {
     required this.funds,
     required this.repository,
     this.onSearchAndAdd,
+    this.fundsFuture,
     this.initialType = 'buy',
     super.key,
   });
   final List<Map<String, dynamic>> funds;
   final TransactionRepository repository;
   final Future<List<Map<String, dynamic>>> Function()? onSearchAndAdd;
+  final Future<List<Map<String, dynamic>>>? fundsFuture;
   final String initialType;
 
   @override
@@ -35,6 +39,7 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
   String cutoff = 'before';
   late String date;
   bool busy = false;
+  bool fundsLoading = false;
   Map<String, dynamic>? previewResult;
   String? error;
   late final String clientRequestId =
@@ -48,9 +53,30 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
         ? widget.initialType
         : 'buy';
     fundCode = funds.isEmpty ? null : funds.first['code'] as String;
+    if (widget.fundsFuture != null) {
+      fundsLoading = true;
+      unawaited(_loadFunds());
+    }
     final now = DateTime.now();
     date =
         '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _loadFunds() async {
+    List<Map<String, dynamic>> loaded;
+    try {
+      loaded = await widget.fundsFuture!;
+    } catch (_) {
+      loaded = const <Map<String, dynamic>>[];
+    }
+    if (!mounted) return;
+    setState(() {
+      funds = List<Map<String, dynamic>>.of(loaded);
+      fundCode = funds.isEmpty ? null : funds.first['code'] as String;
+      fundsLoading = false;
+      previewResult = null;
+      error = null;
+    });
   }
 
   Map<String, dynamic>? get selectedFund {
@@ -62,7 +88,7 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
 
   Future<void> searchAndAddFund() async {
     final callback = widget.onSearchAndAdd;
-    if (callback == null || busy) return;
+    if (callback == null || busy || fundsLoading) return;
     final oldCodes = funds
         .map((fund) => fund['code'])
         .whereType<String>()
@@ -173,12 +199,18 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
     body: ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (funds.isEmpty)
+        if (fundsLoading)
+          const TransactionSectionCard(
+            title: '正在读取基金',
+            description: '正在加载本机基金列表，请稍候。',
+          ),
+        if (!fundsLoading && funds.isEmpty)
           const TransactionSectionCard(
             title: '暂无可用基金',
             description: '请先在基金搜索与添加中添加基金，再录入交易。',
           ),
-        if (funds.isEmpty &&
+        if (!fundsLoading &&
+            funds.isEmpty &&
             widget.onSearchAndAdd != null &&
             transactionType == 'buy')
           OutlinedButton.icon(
