@@ -147,9 +147,9 @@ class LocalNavRepository {
     if (symbol == null) return const {};
     try {
       final qqq = await (quoteCache['$symbol:$navDate'] ??=
-          _fetchYahooQuote(symbol, navDate));
+          _fetchMarketQuote(symbol, navDate));
       final fx = await (quoteCache['CNY=X:$navDate'] ??=
-          _fetchYahooQuote('CNY=X', navDate));
+          _fetchMarketQuote('CNY=X', navDate));
       final dates = qqq.keys
           .where((date) => date.compareTo(navDate) > 0 && fx.containsKey(date))
           .toList()
@@ -163,7 +163,7 @@ class LocalNavRepository {
       return {
         'estimatedNav': estimatedNav,
         'estimateAt': '${date}T23:59:59.000Z',
-        'estimateSource': '$symbol + USD/CNY（Yahoo Finance，100%代理）',
+        'estimateSource': '$symbol + USD/CNY（东方财富，100%代理）',
         'estimateCoverage': 1.0,
         'estimateRuleVersion': 'qqq-fx-v1',
         'estimateBaseDate': navDate,
@@ -175,7 +175,7 @@ class LocalNavRepository {
       return {
         'estimatedNav': null,
         'estimateRuleVersion': 'qqq-fx-v1',
-        'estimateSource': '$symbol + USD/CNY（Yahoo Finance，100%代理）',
+        'estimateSource': '$symbol + USD/CNY（东方财富/Yahoo备用，100%代理）',
         'estimateError': '$error',
       };
     }
@@ -252,6 +252,65 @@ class LocalNavRepository {
       points[date] = close.toDouble();
     }
     if (!points.containsKey(baseDate)) throw StateError('缺少基准日行情');
+    return points;
+  }
+
+  Future<Map<String, double>> _fetchMarketQuote(
+    String symbol,
+    String baseDate,
+  ) async {
+    try {
+      return await _fetchEastmoneyQuote(symbol, baseDate);
+    } catch (_) {
+      return _fetchYahooQuote(symbol == 'CNY=X' ? 'CNY=X' : symbol, baseDate);
+    }
+  }
+
+  Future<Map<String, double>> _fetchEastmoneyQuote(
+    String symbol,
+    String baseDate,
+  ) async {
+    final secid = switch (symbol) {
+      'QQQ' => '105.QQQ',
+      'VOO' => '107.VOO',
+      'CNY=X' => '133.USDCNH',
+      _ => throw StateError('不支持的东方财富标的'),
+    };
+    final start = DateTime.parse(baseDate)
+        .subtract(const Duration(days: 7))
+        .toIso8601String()
+        .substring(0, 10)
+        .replaceAll('-', '');
+    final end = DateTime.now()
+        .add(const Duration(days: 1))
+        .toIso8601String()
+        .substring(0, 10)
+        .replaceAll('-', '');
+    final response = await client
+        .get(
+          Uri.parse(
+            'https://push2his.eastmoney.com/api/qt/stock/kline/get'
+            '?secid=$secid&klt=101&fqt=1&beg=$start&end=$end'
+            '&fields1=f1&fields2=f51,f52,f53,f54,f55,f56,f57,f58',
+          ),
+          headers: {'Referer': 'https://quote.eastmoney.com/'},
+        )
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('东方财富行情请求失败');
+    }
+    final data = (jsonDecode(response.body) as Map)['data'];
+    final rows = data is Map ? data['klines'] : null;
+    if (rows is! List || rows.isEmpty) throw StateError('东方财富行情为空');
+    final points = <String, double>{};
+    for (final row in rows) {
+      if (row is! String) continue;
+      final fields = row.split(',');
+      if (fields.length < 3) continue;
+      final close = double.tryParse(fields[2]);
+      if (close != null && close > 0) points[fields[0]] = close;
+    }
+    if (!points.containsKey(baseDate)) throw StateError('东方财富缺少基准日行情');
     return points;
   }
 
