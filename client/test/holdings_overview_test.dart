@@ -252,6 +252,18 @@ void main() {
     expect(find.text(money('1093.74')), findsOneWidget);
     expect(find.text('${money('43.74')} (4.17%)'), findsOneWidget);
     expect(find.text('预估 ${money('70.50')} (6.71%)'), findsOneWidget);
+    for (final pair in [
+      ['建信纳斯达克100指数（QDII）A人民币', money('1093.74')],
+      ['539001  310.96份', '${money('43.74')} (4.17%)'],
+      ['成本 ${money('1050.00')}', '预估 ${money('70.50')} (6.71%)'],
+    ]) {
+      final left = find.text(pair[0]);
+      final right = find.text(pair[1]);
+      expect(tester.widget<Text>(left).style?.fontSize,
+          tester.widget<Text>(right).style?.fontSize);
+      expect(tester.getTopLeft(left).dy, tester.getTopLeft(right).dy,
+          reason: 'Both sides of each line must align');
+    }
     // The redundant wording removed by this change.
     expect(find.textContaining('正式收益'), findsNothing);
     expect(find.textContaining('正式市值'), findsNothing);
@@ -311,7 +323,7 @@ void main() {
     expect(totalSize, fundSize);
   });
 
-  testWidgets('overview labels use 18px font size matching the figures', (
+  testWidgets('overview labels use 16px font size matching fund names', (
     tester,
   ) async {
     await pumpFullWidth(
@@ -321,7 +333,7 @@ void main() {
     );
     for (final label in ['总市值', '总收益', '总成本', '预估市值', '预估收益']) {
       final textWidget = tester.widget<Text>(find.text(label));
-      expect(textWidget.style?.fontSize, 18, reason: '$label fontSize');
+      expect(textWidget.style?.fontSize, 16, reason: '$label fontSize');
     }
   });
 
@@ -428,7 +440,7 @@ void main() {
     );
     final rows = find.byType(HoldingListItem);
     expect(rows, findsNWidgets(2));
-    // Rows sit back to back (each carries only 8px of its own padding), which
+    // Rows sit back to back (each carries only 6px of its own padding), which
     // is markedly denser than the previous 14px list-tile spacing.
     final gap =
         tester.getTopLeft(rows.at(1)).dy - tester.getBottomLeft(rows.at(0)).dy;
@@ -439,7 +451,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('fund row without an estimate hides the estimate line', (tester) async {
+  testWidgets('fund row without an estimate hides the estimate line', (
+    tester,
+  ) async {
     await pumpFullWidth(
       tester,
       HoldingListItem(item: holding(), onTap: () {}),

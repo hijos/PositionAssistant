@@ -599,7 +599,8 @@ class _HomeShellState extends State<HomeShell> {
               Expanded(
                 child: Text(
                   '当前持仓',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontSize: 18),
                 ),
               ),
               OutlinedButton.icon(
@@ -1078,7 +1079,11 @@ class HoldingOverviewCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('持仓概览', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              '持仓概览',
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontSize: 18),
+            ),
             const SizedBox(height: 18),
             if (state.isLoading) ...const [
               Center(
@@ -1181,8 +1186,7 @@ void showEstimateExplanation(BuildContext context) => showDialog<void>(
 /// One label/value line of [HoldingOverviewCard].
 ///
 /// The label keeps a fixed width so all figures line up vertically. Both the
-/// label and value use 18px so the labels are clearly readable and match the
-/// size of the figures. [trailing] is a compact widget drawn right after the
+/// label and value use the fund name's font size. [trailing] is drawn after the
 /// label text (the estimate info button); it never moves the label itself, so
 /// every row shares one label column whether or not it carries an icon.
 class _OverviewRow extends StatelessWidget {
@@ -1212,9 +1216,8 @@ class _OverviewRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 18,
-                      ),
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.normal),
                 ),
                 if (trailing != null) ...[const SizedBox(width: 4), trailing],
               ],
@@ -1224,11 +1227,8 @@ class _OverviewRow extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600, color: color),
             ),
           ),
         ],
@@ -1427,85 +1427,64 @@ class HoldingListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rightWidth = MediaQuery.sizeOf(context).width < 380 ? 132.0 : 152.0;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        // Tight vertical rhythm: consecutive funds are separated by ~16px of
-        // white space instead of a full ListTile's worth.
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final textTheme = Theme.of(context).textTheme;
+    Widget line(String left, String? right, TextStyle? style, {Color? color}) =>
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
           children: [
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${item['fundName'] ?? item['fundCode'] ?? '基金'}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${item['fundCode'] ?? '—'}  ${formatNumber(item['shares'])}份',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '成本 ${formatMoney(item['cost'])}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
+              child: Text(
+                left,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: style,
               ),
             ),
             const SizedBox(width: 12),
             SizedBox(
               width: rightWidth,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    formatMoney(item['marketValue']),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    formatMoneyWithRate(item['profit'], item['profitRate']),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: profitColor(context, item['profit']),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  if (item['estimateRuleVersion'] == 'qqq-fx-v1' ||
-                      item['estimatedProfit'] != null ||
-                      item['estimatedMarketValue'] != null)
-                    Text(
-                      '预估 ${formatMoneyWithRate(item['estimatedProfit'], item['estimatedProfitRate'])}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                ],
+              child: Text(
+                right ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: style?.copyWith(color: color),
               ),
+            ),
+          ],
+        );
+    final hasEstimate =
+        item['estimateRuleVersion'] == 'qqq-fx-v1' ||
+        item['estimatedProfit'] != null ||
+        item['estimatedMarketValue'] != null;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            line(
+              '${item['fundName'] ?? item['fundCode'] ?? '基金'}',
+              formatMoney(item['marketValue']),
+              textTheme.titleMedium,
+            ),
+            const SizedBox(height: 4),
+            line(
+              '${item['fundCode'] ?? '—'}  ${formatNumber(item['shares'])}份',
+              formatMoneyWithRate(item['profit'], item['profitRate']),
+              textTheme.bodySmall,
+              color: profitColor(context, item['profit']),
+            ),
+            const SizedBox(height: 2),
+            line(
+              '成本 ${formatMoney(item['cost'])}',
+              hasEstimate
+                  ? '预估 ${formatMoneyWithRate(item['estimatedProfit'], item['estimatedProfitRate'])}'
+                  : null,
+              textTheme.bodySmall,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ],
         ),
