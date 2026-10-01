@@ -121,6 +121,13 @@ Android 本地模式不依赖持仓助手服务端：`client/lib/data/nav_reposi
 
 本机验证：`node --check server/quotas.js`、`node --check server/index.js`、`node --test test/quotas.test.js`。真实目录、基金详情页和 PostgreSQL 部署联通仍需在 Linux/上游环境验收。
 
+## F39 多渠道额度与直销入口配置
+
+额度记录支持 `channels.distribution` 和 `channels.direct` 两个渠道，旧版 `status`/`limit` 字段继续映射到推荐渠道，旧缓存读取时自动解释为代销渠道。直销来源只使用公开、无需登录和验证码的基金公司页面；当前已配置华夏基金产品销售网点页、易方达网上交易购买页、南方基金个人理财详情页、摩根基金产品页、广发基金产品页、国泰基金产品页、招商基金产品页、博时基金产品页、汇添富基金产品页、嘉实基金产品页、华宝基金产品详情页和建信基金产品详情页的代码级入口模板，按基金代码生成 URL。入口存在不等于额度已确认：页面解析失败、需要登录或没有公开限额时，直销渠道保持“未知/未披露”，不会写入 0。
+
+天弘官方基金详情页入口已确认：`https://www.thfund.com.cn/fundinfo/{code}`。浏览器可见页面会显示申购状态；当前已验证 018043 显示“申购状态：关闭”，按业务规则对应直销额度 0。由于服务端请求仍可能命中阿里云 WAF，天弘自动采集保持关闭，避免将挑战页误当基金数据。；目录中“摩根”基金已确认使用摩根基金（cifm.com），不是摩根士丹利基金，待确认其公开直销产品页或公告入口后再加入配置。直销适配器返回 `fund-manager-page` 来源类型；自动刷新会分别统计代销更新、直销更新、直销不可用和失败数量。手动覆盖支持 `channel=direct|distribution`，并保存为 `channels.<channel>.<field>` 覆盖字段。 南方基金另有公开 `subscriptionAndRedemptionStatus` 接口，适配器会按基金代码读取状态与官方备注；基金公司官方页面、官方公告和官方接口默认按直销口径解释；同时保留 `officialRestriction` 和来源信息，便于后续发现渠道例外时修正。
+
+本机验证：`node --check server/index.js`、`node --check server/quota-sources/direct-config.js`、`node --check server/quota-sources/fund-manager.js`、`node --test test/quota-direct-config.test.js test/quotas.test.js test/quotas-http.test.js`。
 ## F37 用户额度覆盖、优先级和隔离
 
 额度自动记录与用户覆盖记录按同一基金代码分开保存。`PUT /api/quotas/:code` 只写入当前
@@ -175,3 +182,9 @@ Android 本地设置页使用系统 `ACTION_OPEN_DOCUMENT` 选择 JSON 文件；
 - **历史实现缺口核实**：当前 `server/index.js` 注册/登录实际仍用 `data/db.json` 用户和进程内 sessions，尚未使用 `0002_users.sql`。因此 F13 的 PostgreSQL `owner_id` 暂用既有账号字符串，不伪造 users 外键；部署必须保留原 JSON 用户文件。未来迁移认证必须保留或显式映射 owner_id。服务重启会失效会话，账号保存的基金仍在 PostgreSQL。此处不代表 F06–F10 验收通过。
 - 本机测试：`node --test test/funds.test.js`；Flutter `flutter test`。Linux 专项数据库测试复用 `TEST_DATABASE_URL=... node --test test/catalog.integration.test.js` 的随机临时数据库流程，新增跨连接并发添加及账号隔离断言；需要独立测试实例和 CREATEDB 权限。
 - Linux 联调：使用两个账号分别登录；一个账号添加相同代码多次，列表只有一项，另一个账号列表为空；重启服务后重新登录仍可读取。Android 本地添加后关闭重开、切远端再切回，本地记录应保留且不出现在远端。真实目录筛选及设备网络仍需验收。
+
+
+
+
+
+

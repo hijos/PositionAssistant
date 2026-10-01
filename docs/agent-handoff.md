@@ -869,3 +869,12 @@
 - 验证：`flutter analyze lib/data/transaction_repository.dart` 通过；`flutter test test/transaction_entry_test.dart` 20 项通过；`flutter test test/repository_test.dart` 12 项通过。
 - 未覆盖：未在 Android 真机上手工验证联网获取净值时的预览耗时与网络失败交互。
 - 更新时间：2026-09-30。
+
+### 用户追加：持仓页字体与基金行对齐优化
+
+- 状态：done
+- 修改文件：`client/lib/main.dart`、`client/test/holdings_overview_test.dart`。
+- 已实现：概览标题与当前持仓标题统一 18px；概览标签和值统一为 16px；每只基金的左、右三行改为同一行基线和字号，代码/收益、成本/预估收益逐行对齐；基金行上下间距收紧至 6px。
+- 验证：`flutter analyze lib/main.dart test/holdings_overview_test.dart` 无问题；`flutter test test/holdings_overview_test.dart` 17 项通过。
+- 未覆盖：未在 Android 真机手工确认字体字形和不同系统字体下的视觉效果。
+- 更新时间：2026-10-01。
