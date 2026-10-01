@@ -483,16 +483,16 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 },
               ),
               if (item['entryMode'] == 'holding') ...[
-                ('持有金额（原始输入）', _number(item['holdingAmount'])),
+                ('持有金额', _number(item['holdingAmount'])),
                 if (item['holdingProfit'] != null)
-                  ('持有收益（原始输入）', _inputNumber(item['holdingProfit']))
+                  ('持有收益', _inputNumber(item['holdingProfit']))
                 else
                   (
                     '持有收益率（原始输入）',
                     _inputNumber(item['holdingReturnRate'], suffix: '%'),
                   ),
-                ('交易金额（计算结果）', _number(item['amount'])),
-                ('交易份额（计算结果）', _number(item['shares'])),
+                ('持有成本', '${_number(item['amount'])}（计算所得）'),
+                ('交易份额', '${_number(item['shares'])}（计算所得）'),
               ] else ...[
                 ('交易金额', _number(item['amount'])),
                 ('交易份额', _number(item['shares'])),
