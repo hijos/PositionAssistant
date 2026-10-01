@@ -17,7 +17,6 @@ class _QuotaPageState extends State<QuotaPage> {
 
   static const categories = ['全部', '纳斯达克100', '标普500'];
   static const sortOptions = [
-    ('preferred', '按推荐渠道'),
     ('directLimit', '按直销额度'),
     ('distributionLimit', '按代销额度'),
     ('name', '按基金名称'),
@@ -70,23 +69,6 @@ class _QuotaPageState extends State<QuotaPage> {
     return normalizeQuotaChannel(value is Map ? Map<String, dynamic>.from(value) : null, q);
   }
 
-  bool hasChannel(Quota q, String name) => q['channels'] is Map && (q['channels'] as Map).containsKey(name);
-
-  String _statusText(QuotaChannel c, {required bool channelKnown}) {
-    if (!channelKnown) return '未披露';
-    final status = '${c['status']}';
-    return status == '未知' ? '未披露' : status;
-  }
-
-  String _limitText(QuotaChannel c, {required bool channelKnown}) {
-    if (!channelKnown) return '-';
-    final limit = quotaAmount(c['limit']);
-    if (limit == null) return '未披露';
-    if (limit >= 100000000) return '${(limit / 100000000).toStringAsFixed(limit % 100000000 == 0 ? 0 : 2)}亿';
-    if (limit >= 10000) return '${(limit / 10000).toStringAsFixed(limit % 10000 == 0 ? 0 : 2)}万';
-    return limit.toStringAsFixed(0);
-  }
-
   String _annualReturnText(Quota q) {
     final raw = q['annualReturn'];
     if (raw == null) return '-';
@@ -95,63 +77,35 @@ class _QuotaPageState extends State<QuotaPage> {
     return '${value >= 0 ? '+' : ''}${(value * 100).toStringAsFixed(2)}%';
   }
 
-  String _feeRateText(Quota q) {
-    final raw = q['feeRate'];
-    if (raw == null) return '-';
-    final value = num.tryParse('${raw}');
-    if (value == null) return '-';
-    return '${value.toStringAsFixed(2)}%';
-  }
-
-  Color _statusColor(BuildContext context, QuotaChannel c, {required bool channelKnown}) {
-    final scheme = Theme.of(context).colorScheme;
-    if (!channelKnown) return scheme.onSurfaceVariant;
-    switch ('${c['status']}') {
-      case '开放申购': return scheme.primary;
-      case '限大额': return const Color(0xffb26a00);
-      case '暂停申购': return scheme.error;
-      default: return scheme.onSurfaceVariant;
-    }
-  }
-
   Future<void> edit(Quota q) async {
     String selected = 'direct';
     final status = TextEditingController(text: '${channel(q, selected)['status'] ?? '未知'}');
     final limit = TextEditingController(text: '${channel(q, selected)['limit'] ?? ''}');
-    final fields = await showDialog<Quota>(context: context, builder: (context) => StatefulBuilder(builder: (context, update) => AlertDialog(
+    final result = await showDialog<Map<String, dynamic>>(context: context, builder: (context) => StatefulBuilder(builder: (context, update) => AlertDialog(
       title: Text('修改 ${q['code']}'),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
+      content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
         DropdownButtonFormField<String>(initialValue: selected, items: const [DropdownMenuItem(value: 'distribution', child: Text('代销渠道')), DropdownMenuItem(value: 'direct', child: Text('直销渠道'))], onChanged: (value) { if (value == null) return; update(() { selected = value; status.text = '${channel(q, selected)['status'] ?? '未知'}'; limit.text = '${channel(q, selected)['limit'] ?? ''}'; }); }),
         TextField(controller: status, decoration: const InputDecoration(labelText: '申购状态')),
         TextField(controller: limit, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '单日限额（元，留空表示未披露）')),
+        const SizedBox(height: 12),
+        Text('当上传某特定额度的用户足够多时，会自动修正云端额度数据。', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ]),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')), FilledButton(onPressed: () => Navigator.pop(context, {'channel': selected, 'status': quotaStatus(status.text), 'limit': quotaAmount(limit.text)}), child: const Text('保存'))],
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        TextButton(onPressed: () => Navigator.pop(context, {'upload': false, 'fields': {'channel': selected, 'status': quotaStatus(status.text), 'limit': quotaAmount(limit.text)}}), child: const Text('保存')),
+        FilledButton(onPressed: () => Navigator.pop(context, {'upload': true, 'fields': {'channel': selected, 'status': quotaStatus(status.text), 'limit': quotaAmount(limit.text)}}), child: const Text('保存并上传')),
+      ],
     )));
-    if (fields != null && mounted) await run(() => widget.repository.setOverride('${q['code']}', fields));
-  }
-
-  Future<void> detail(Quota q) async {
-    final direct = hasChannel(q, 'direct');
-    String lineOf(String key) {
-      final c = channel(q, key);
-      return '${c['status']} · ${quotaAmount(c['limit']) == null ? '未披露' : '¥${quotaAmount(c['limit'])!.toStringAsFixed(2)}'}';
-    }
-    await showDialog<void>(context: context, builder: (context) => AlertDialog(
-      title: Text('${q['name']}（${q['code']}）'),
-      content: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('分类：${q['category'] ?? 'QDII'}'), Text('代销：${lineOf('distribution')}'), Text('直销：${direct ? lineOf('direct') : '暂无公开数据'}'),
-        Text('推荐渠道：${q['preferredChannel'] == 'direct' ? '直销' : q['preferredChannel'] == 'distribution' ? '代销' : '暂无'}'), Text('数据质量：${q['dataQuality'] ?? 'unknown'}'),
-        Text('代销来源：${channel(q, 'distribution')['source'] ?? '未披露'}'), Text('直销来源：${direct ? channel(q, 'direct')['source'] ?? '未披露' : '未披露'}'),
-        Text('近一年收益率：${q['annualReturn'] == null ? '未披露' : '${(num.parse('${q['annualReturn']}') * 100).toStringAsFixed(2)}%'}'), Text('说明：${q['detail'] ?? '未披露'}'),
-      ])),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('关闭'))],
-    ));
+    if (result == null || !mounted) return;
+    final fields = Map<String, dynamic>.from(result['fields'] as Map);
+    await run(() => widget.repository.setOverride('${q['code']}', fields));
+    // TODO(quota-service): result['upload'] == true 时把 fields 上报到额度子服务 /api/corrections；
+    // 子服务未部署前仅本地保存。
   }
 
   dynamic sortValue(Quota q) {
     if (sort == 'directLimit') return quotaAmount(channel(q, 'direct')['limit']) ?? -1;
     if (sort == 'distributionLimit') return quotaAmount(channel(q, 'distribution')['limit']) ?? -1;
-    if (sort == 'preferred') return '${q['preferredChannel']}';
     return '${q[sort]}';
   }
 
@@ -208,17 +162,23 @@ class _QuotaPageState extends State<QuotaPage> {
   Widget _buildToolbar(ThemeData theme, ColorScheme scheme) {
     return Row(children: [
       Expanded(
-        child: TextField(
-          decoration: InputDecoration(
-            hintText: '搜索基金名称或代码',
-            prefixIcon: const Icon(Icons.search, size: 20),
-            isDense: true,
-            filled: true,
-            fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        child: SizedBox(
+          height: 38,
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: '搜索基金',
+              hintStyle: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              prefixIcon: const Icon(Icons.search, size: 18),
+              prefixIconConstraints: const BoxConstraints(minWidth: 36),
+              isDense: true,
+              filled: true,
+              fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(19), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(vertical: 9),
+            ),
+            style: theme.textTheme.bodySmall,
+            onChanged: (value) => setState(() => query = value),
           ),
-          onChanged: (value) => setState(() => query = value),
         ),
       ),
       const SizedBox(width: 8),
@@ -227,43 +187,40 @@ class _QuotaPageState extends State<QuotaPage> {
         initialValue: sort,
         onSelected: (value) => setState(() => sort = value),
         itemBuilder: (context) => [for (final option in sortOptions) PopupMenuItem(value: option.$1, child: Text(option.$2))],
-        child: _toolbarPill(scheme, Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.sort, size: 16, color: scheme.onSurfaceVariant),
+        child: _toolbarPill(theme, scheme, Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.sort, size: 15, color: scheme.onSurfaceVariant),
           const SizedBox(width: 4),
           Text(sortOptions.firstWhere((o) => o.$1 == sort).$2, style: theme.textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant)),
-          Icon(Icons.arrow_drop_down, size: 16, color: scheme.onSurfaceVariant),
+          Icon(Icons.arrow_drop_down, size: 15, color: scheme.onSurfaceVariant),
         ])),
       ),
       const SizedBox(width: 8),
       Material(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(19),
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(19),
           onTap: () => setState(() => ascending = !ascending),
           child: Padding(
             padding: const EdgeInsets.all(9),
-            child: Icon(ascending ? Icons.arrow_upward : Icons.arrow_downward, size: 18, color: scheme.onSurfaceVariant),
+            child: Icon(ascending ? Icons.arrow_upward : Icons.arrow_downward, size: 17, color: scheme.onSurfaceVariant),
           ),
         ),
       ),
     ]);
   }
 
-  Widget _toolbarPill(ColorScheme scheme, Widget child) => Container(
+  Widget _toolbarPill(ThemeData theme, ColorScheme scheme, Widget child) => Container(
+    height: 38,
     decoration: BoxDecoration(
       color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(19),
     ),
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+    padding: const EdgeInsets.symmetric(horizontal: 10),
     child: child,
   );
 
   Widget _buildQuotaCard(ThemeData theme, ColorScheme scheme, Quota q) {
-    final distKnown = hasChannel(q, 'distribution');
-    final directKnown = hasChannel(q, 'direct');
-    final dist = channel(q, 'distribution');
-    final direct = channel(q, 'direct');
     final annual = q['annualReturn'] == null ? null : num.tryParse('${q['annualReturn']}');
     final userOverride = q['valueSource'] == 'user';
 
@@ -274,7 +231,7 @@ class _QuotaPageState extends State<QuotaPage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5))),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => detail(q),
+        onTap: busy ? null : () => edit(q),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -296,15 +253,14 @@ class _QuotaPageState extends State<QuotaPage> {
               ),
               const SizedBox(width: 12),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                _channelLine(theme, scheme, '代销', dist, known: distKnown),
+                _placeholderLine(theme, scheme, '代销'),
                 const SizedBox(height: 2),
-                _channelLine(theme, scheme, '直销', direct, known: directKnown),
+                _placeholderLine(theme, scheme, '直销'),
                 const SizedBox(height: 4),
-                Text('费率 ${_feeRateText(q)}', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                _placeholderLine(theme, scheme, '费率'),
               ]),
             ]),
-            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-              _cardAction(theme, scheme, '详情', () => detail(q)),
+            Row(children: [
               _cardAction(theme, scheme, '修改', busy ? null : () => edit(q)),
               if (userOverride) _cardAction(theme, scheme, '恢复自动', busy ? null : () => run(() => widget.repository.restore('${q['code']}'))),
             ]),
@@ -314,14 +270,10 @@ class _QuotaPageState extends State<QuotaPage> {
     );
   }
 
-  Widget _channelLine(ThemeData theme, ColorScheme scheme, String label, QuotaChannel c, {required bool known}) {
-    final color = _statusColor(context, c, channelKnown: known);
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Text('${label} ', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-      Text(_statusText(c, channelKnown: known), style: theme.textTheme.bodySmall?.copyWith(color: color, fontWeight: FontWeight.w600)),
-      Text(' ${_limitText(c, channelKnown: known)}', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-    ]);
-  }
+  Widget _placeholderLine(ThemeData theme, ColorScheme scheme, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Text('${label} ', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+    Text('-', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+  ]);
 
   Widget _badge(ColorScheme scheme, String text) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
