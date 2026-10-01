@@ -91,9 +91,13 @@ class _QuotaPageState extends State<QuotaPage> {
         Text('当上传某特定额度的用户足够多时，会自动修正云端额度数据。', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ]),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-        TextButton(onPressed: () => Navigator.pop(context, {'upload': false, 'fields': {'channel': selected, 'status': quotaStatus(status.text), 'limit': quotaAmount(limit.text)}}), child: const Text('保存')),
-        FilledButton(onPressed: () => Navigator.pop(context, {'upload': true, 'fields': {'channel': selected, 'status': quotaStatus(status.text), 'limit': quotaAmount(limit.text)}}), child: const Text('保存并上传')),
+        Row(children: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          const Spacer(),
+          FilledButton(onPressed: () => Navigator.pop(context, {'upload': false, 'fields': {'channel': selected, 'status': quotaStatus(status.text), 'limit': quotaAmount(limit.text)}}), child: const Text('保存')),
+          const SizedBox(width: 8),
+          FilledButton(onPressed: () => Navigator.pop(context, {'upload': true, 'fields': {'channel': selected, 'status': quotaStatus(status.text), 'limit': quotaAmount(limit.text)}}), child: const Text('保存并上传')),
+        ]),
       ],
     )));
     if (result == null || !mounted) return;
@@ -160,23 +164,28 @@ class _QuotaPageState extends State<QuotaPage> {
   }
 
   Widget _buildToolbar(ThemeData theme, ColorScheme scheme) {
-    return Row(children: [
+    const double h = 40;
+    const double r = 20;
+    final fill = scheme.surfaceContainerHighest.withValues(alpha: 0.6);
+    final iconColor = scheme.onSurfaceVariant;
+
+    return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
       Expanded(
-        child: SizedBox(
-          height: 38,
+        child: Container(
+          height: h,
+          decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(r)),
+          alignment: Alignment.center,
           child: TextField(
             decoration: InputDecoration(
               hintText: '搜索基金',
-              hintStyle: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-              prefixIcon: const Icon(Icons.search, size: 18),
-              prefixIconConstraints: const BoxConstraints(minWidth: 36),
-              isDense: true,
-              filled: true,
-              fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(19), borderSide: BorderSide.none),
-              contentPadding: const EdgeInsets.symmetric(vertical: 9),
+              hintStyle: theme.textTheme.bodySmall?.copyWith(color: iconColor),
+              prefixIcon: Icon(Icons.search, size: 18, color: iconColor),
+              prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 24),
+              border: InputBorder.none,
+              isCollapsed: true,
             ),
             style: theme.textTheme.bodySmall,
+            textAlignVertical: TextAlignVertical.center,
             onChanged: (value) => setState(() => query = value),
           ),
         ),
@@ -187,38 +196,34 @@ class _QuotaPageState extends State<QuotaPage> {
         initialValue: sort,
         onSelected: (value) => setState(() => sort = value),
         itemBuilder: (context) => [for (final option in sortOptions) PopupMenuItem(value: option.$1, child: Text(option.$2))],
-        child: _toolbarPill(theme, scheme, Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.sort, size: 15, color: scheme.onSurfaceVariant),
-          const SizedBox(width: 4),
-          Text(sortOptions.firstWhere((o) => o.$1 == sort).$2, style: theme.textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant)),
-          Icon(Icons.arrow_drop_down, size: 15, color: scheme.onSurfaceVariant),
-        ])),
+        child: Container(
+          height: h,
+          decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(r)),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Icon(Icons.sort, size: 16, color: iconColor),
+            const SizedBox(width: 4),
+            Text(sortOptions.firstWhere((o) => o.$1 == sort).$2, style: theme.textTheme.labelMedium?.copyWith(color: iconColor)),
+            Icon(Icons.arrow_drop_down, size: 16, color: iconColor),
+          ]),
+        ),
       ),
       const SizedBox(width: 8),
       Material(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(19),
+        color: fill,
+        borderRadius: BorderRadius.circular(r),
         child: InkWell(
-          borderRadius: BorderRadius.circular(19),
+          borderRadius: BorderRadius.circular(r),
           onTap: () => setState(() => ascending = !ascending),
-          child: Padding(
-            padding: const EdgeInsets.all(9),
-            child: Icon(ascending ? Icons.arrow_upward : Icons.arrow_downward, size: 17, color: scheme.onSurfaceVariant),
+          child: SizedBox(
+            height: h,
+            width: h,
+            child: Icon(ascending ? Icons.arrow_upward : Icons.arrow_downward, size: 17, color: iconColor),
           ),
         ),
       ),
     ]);
   }
-
-  Widget _toolbarPill(ThemeData theme, ColorScheme scheme, Widget child) => Container(
-    height: 38,
-    decoration: BoxDecoration(
-      color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-      borderRadius: BorderRadius.circular(19),
-    ),
-    padding: const EdgeInsets.symmetric(horizontal: 10),
-    child: child,
-  );
 
   Widget _buildQuotaCard(ThemeData theme, ColorScheme scheme, Quota q) {
     final annual = q['annualReturn'] == null ? null : num.tryParse('${q['annualReturn']}');
@@ -261,7 +266,7 @@ class _QuotaPageState extends State<QuotaPage> {
               ]),
             ]),
             Row(children: [
-              _cardAction(theme, scheme, '修改', busy ? null : () => edit(q)),
+              Transform.translate(offset: const Offset(-10, 0), child: _cardAction(theme, scheme, '修改', busy ? null : () => edit(q))),
               if (userOverride) _cardAction(theme, scheme, '恢复自动', busy ? null : () => run(() => widget.repository.restore('${q['code']}'))),
             ]),
           ]),
