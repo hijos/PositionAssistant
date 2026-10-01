@@ -916,19 +916,22 @@ class _HomeShellState extends State<HomeShell> {
         children: [
           Text('本地数据', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
+          Row(
             children: [
-              FilledButton.tonalIcon(
-                onPressed: openImport,
-                icon: const Icon(Icons.file_upload_outlined, size: 18),
-                label: const Text('导入'),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: openImport,
+                  icon: const Icon(Icons.file_upload_outlined, size: 18),
+                  label: const Text('导入'),
+                ),
               ),
-              OutlinedButton.icon(
-                onPressed: exportLocal,
-                icon: const Icon(Icons.file_download_outlined, size: 18),
-                label: const Text('导出'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: exportLocal,
+                  icon: const Icon(Icons.file_download_outlined, size: 18),
+                  label: const Text('导出'),
+                ),
               ),
             ],
           ),
