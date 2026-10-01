@@ -131,6 +131,54 @@ void main() {
     expect(fund?['navDate'], '2026-09-28');
   });
 
+  test('forDate ignores a future cached NAV and selects the exact trade date',
+      () async {
+    await repository.put('navSnapshots', '539001:2026-09-29:remote', {
+      'id': '539001:2026-09-29:remote',
+      'fundCode': '539001',
+      'navDate': '2026-09-29',
+      'nav': 3.9,
+      'source': 'eastmoney-local-nav-v1',
+    });
+    final nav = LocalNavRepository(
+      () async => repository,
+      client: _clientWithRows({
+        '539001': [
+          {'FSRQ': '2026-08-11', 'DWJZ': '3.4'},
+          {'FSRQ': '2026-08-10', 'DWJZ': '3.3'},
+        ],
+      }),
+    );
+
+    final snapshot = await nav.forDate('539001', '2026-08-11');
+
+    expect(snapshot?['nav'], 3.4);
+    expect(snapshot?['navDate'], '2026-08-11');
+  });
+
+  test('forDate uses an exact cached NAV without contacting the remote source',
+      () async {
+    await repository.put('navSnapshots', '539001:2026-08-11:remote', {
+      'id': '539001:2026-08-11:remote',
+      'fundCode': '539001',
+      'navDate': '2026-08-11',
+      'nav': 3.4,
+      'source': 'eastmoney-local-nav-v1',
+    });
+    final nav = LocalNavRepository(
+      () async => repository,
+      client: MockClient(
+        (request) async =>
+            throw StateError('exact cache should avoid the network'),
+      ),
+    );
+
+    final snapshot = await nav.forDate('539001', '2026-08-11');
+
+    expect(snapshot?['nav'], 3.4);
+    expect(snapshot?['navDate'], '2026-08-11');
+  });
+
   test('refreshLatest stores QQQ and USD/CNY estimate metadata', () async {
     await repository.put('funds', '539001', {
       'code': '539001',
@@ -192,4 +240,3 @@ void main() {
     expect(fund?['estimateMarketDate'], '2026-09-30');
   });
 }
-

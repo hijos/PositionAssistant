@@ -26,7 +26,7 @@ class LocalNavRepository {
             .where(
               (x) =>
                   x['fundCode'] == code &&
-                  '${x['navDate']}'.compareTo(date) >= 0,
+                  '${x['navDate']}' == date,
             )
             .toList()
           ..sort((a, b) => '${a['navDate']}'.compareTo('${b['navDate']}'));
