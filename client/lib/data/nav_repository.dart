@@ -201,15 +201,26 @@ class LocalNavRepository {
         .subtract(const Duration(days: 7))
         .millisecondsSinceEpoch ~/ 1000;
     final end = DateTime.now().millisecondsSinceEpoch ~/ 1000 + 86400;
-    final response = await client
-        .get(Uri.parse(
-          'https://query1.finance.yahoo.com/v8/finance/chart/$symbol'
-          '?interval=1d&period1=$start&period2=$end',
-        ), headers: {'User-Agent': 'Mozilla/5.0'})
-        .timeout(const Duration(seconds: 10));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('行情请求失败');
+    http.Response? response;
+    for (final host in ['query1.finance.yahoo.com', 'query2.finance.yahoo.com']) {
+      final candidate = await client
+          .get(
+            Uri.parse(
+              'https://$host/v8/finance/chart/$symbol'
+              '?interval=1d&period1=$start&period2=$end',
+            ),
+            headers: {
+              'User-Agent': 'Mozilla/5.0',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+      if (candidate.statusCode >= 200 && candidate.statusCode < 300) {
+        response = candidate;
+        break;
+      }
     }
+    if (response == null) throw StateError('QQQ/汇率行情接口不可用');
     final result = (jsonDecode(response.body) as Map)['chart']?['result']?[0];
     if (result is! Map) throw StateError('行情响应无效');
     final timestamps = result['timestamp'];
