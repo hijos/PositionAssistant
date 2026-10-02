@@ -70,6 +70,7 @@ class _HomeShellState extends State<HomeShell> {
   RemoteHoldingRepository? remoteHoldings;
   Future<List<Map<String, dynamic>>>? savedFunds;
   Future<List<Map<String, dynamic>>>? savedHoldings;
+  Map<String, dynamic>? qqqSnapshot;
   late final LocalPlanRepository localPlans = LocalPlanRepository(
     () => localStorage ??= openLocalRepository(),
   );
@@ -100,6 +101,9 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_refreshQqqSnapshot());
+    });
     if (localMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_initializeLocalMode());
@@ -155,11 +159,21 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   void reloadFunds() {
+    unawaited(_refreshQqqSnapshot());
     if (localMode) _refreshLocalNav();
     savedFunds = currentFunds?.list().catchError((_) => <Map<String, dynamic>>[]);
     savedFunds?.ignore();
     savedHoldings = currentHoldings?.list().catchError((_) => <Map<String, dynamic>>[]);
     savedHoldings?.ignore();
+  }
+
+  Future<void> _refreshQqqSnapshot() async {
+    final nav = localNav ??= LocalNavRepository(
+      () => localStorage ??= openLocalRepository(),
+    );
+    final snapshot = await nav.latestQqqDailyChange();
+    if (!mounted || snapshot == null) return;
+    setState(() => qqqSnapshot = snapshot);
   }
 
   /// The holdings view derives formal market value and profit from the
@@ -480,29 +494,34 @@ class _HomeShellState extends State<HomeShell> {
           );
         }
         final funds = snapshot.data ?? const <Map<String, dynamic>>[];
-        if (funds.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('暂无自选基金'),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
+        final dividerColor = Theme.of(context).dividerColor;
+        final qqq = <String, dynamic>{
+          'code': 'QQQ',
+          'name': '纳斯达克100指数ETF',
+          ...?qqqSnapshot,
+        };
+        return Column(
+          children: [
+            FundListTile(
+              fund: qqq,
+              onRemove: (_) async {},
+              deletable: false,
+            ),
+            if (funds.isNotEmpty) Divider(height: 1, color: dividerColor),
+            for (var i = 0; i < funds.length; i++) ...[
+              if (i > 0) Divider(height: 1, color: dividerColor),
+              FundListTile(fund: funds[i], onRemove: removeFund),
+            ],
+            if (funds.isEmpty) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
                   onPressed: openSearch,
                   icon: const Icon(Icons.add),
                   label: const Text('添加第一只基金'),
                 ),
-              ],
-            ),
-          );
-        }
-        final dividerColor = Theme.of(context).dividerColor;
-        return Column(
-          children: [
-            for (var i = 0; i < funds.length; i++) ...[
-              if (i > 0) Divider(height: 1, color: dividerColor),
-              FundListTile(fund: funds[i], onRemove: removeFund),
+              ),
             ],
             const SizedBox(height: 4),
             Align(
@@ -1266,9 +1285,15 @@ class _OverviewRow extends StatelessWidget {
 /// the figures are never squeezed, and the name ellipsizes instead of wrapping.
 /// A watchlist row with a revealable trailing delete button on left swipe.
 class FundListTile extends StatefulWidget {
-  const FundListTile({required this.fund, required this.onRemove, super.key});
+  const FundListTile({
+    required this.fund,
+    required this.onRemove,
+    this.deletable = true,
+    super.key,
+  });
 
   final Map<String, dynamic> fund;
+  final bool deletable;
 
   /// Runs after the user confirms deletion.
   final Future<void> Function(Map<String, dynamic> fund) onRemove;
@@ -1332,14 +1357,17 @@ class _FundListTileState extends State<FundListTile>
     final dailyChange = parseNumberOrNull(fund['dailyChange']);
     final name = '${fund['name'] ?? fund['code']}';
     final code = '${fund['code'] ?? '—'}';
+    final navDate = '${fund['navDate'] ?? ''}';
     final errorColor = Theme.of(context).colorScheme.error;
     final onErrorColor = Theme.of(context).colorScheme.onError;
+    final secondaryTextStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+      fontSize: 11,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
 
-    return GestureDetector(
-      onHorizontalDragUpdate: _handleHorizontalDragUpdate,
-      onHorizontalDragEnd: _handleHorizontalDragEnd,
-      child: Stack(
-        children: [
+    final row = Stack(
+      children: [
+          if (widget.deletable)
           // Behind layer: red delete button pinned to the right edge.
           Positioned.fill(
             child: Align(
@@ -1404,29 +1432,36 @@ class _FundListTileState extends State<FundListTile>
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            code,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  fontSize: 11,
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
-                          ),
+                          Text(code, style: secondaryTextStyle),
                         ],
                       ),
                     ),
                     const SizedBox(width: 12),
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        dailyChange == null
-                            ? '—'
-                            : '${dailyChange >= 0 ? '+' : ''}${dailyChange.toStringAsFixed(2)}%',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: profitColor(context, dailyChange),
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            dailyChange == null
+                                ? '—'
+                                : '${dailyChange >= 0 ? '+' : ''}${dailyChange.toStringAsFixed(2)}%',
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: profitColor(context, dailyChange),
+                            ),
+                          ),
+                          if (navDate.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              navDate,
+                              textAlign: TextAlign.right,
+                              style: secondaryTextStyle,
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
@@ -1434,8 +1469,13 @@ class _FundListTileState extends State<FundListTile>
               ),
             ),
           ),
-        ],
-      ),
+      ],
+    );
+    if (!widget.deletable) return row;
+    return GestureDetector(
+      onHorizontalDragUpdate: _handleHorizontalDragUpdate,
+      onHorizontalDragEnd: _handleHorizontalDragEnd,
+      child: row,
     );
   }
 }

@@ -41,13 +41,32 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: FundListTile(
-            fund: {...fund, 'dailyChange': 1.25},
+            fund: {...fund, 'dailyChange': 1.25, 'navDate': '2026-10-01'},
             onRemove: (_) async {},
           ),
         ),
       ),
     );
     expect(find.text('+1.25%'), findsOneWidget);
+    expect(find.text('2026-10-01'), findsOneWidget);
+  });
+
+  testWidgets('a fixed row cannot reveal the delete action', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FundListTile(
+            fund: {...fund, 'code': 'QQQ', 'name': '纳斯达克100指数ETF'},
+            onRemove: (_) async {},
+            deletable: false,
+          ),
+        ),
+      ),
+    );
+
+    await tester.fling(find.text('纳斯达克100指数ETF'), const Offset(-500, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text('删除'), findsNothing);
   });
 
   testWidgets(

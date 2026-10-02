@@ -10,6 +10,24 @@ class LocalNavRepository {
   final Future<Repository> Function() open;
   final http.Client client;
 
+  Future<Map<String, dynamic>?> latestQqqDailyChange() async {
+    try {
+      final points = await _fetchMarketQuoteWindow('QQQ');
+      final dates = points.keys.toList()..sort();
+      if (dates.length < 2) return null;
+      final latestDate = dates.last;
+      final previousDate = dates[dates.length - 2];
+      final latest = points[latestDate]!;
+      final previous = points[previousDate]!;
+      return {
+        'dailyChange': (latest / previous - 1) * 100,
+        'navDate': latestDate,
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<Map<String, dynamic>?> latest(
     String code, {
     RepositorySession? session,
@@ -220,10 +238,10 @@ class LocalNavRepository {
 
   Future<Map<String, double>> _fetchYahooQuote(
     String symbol,
-    String baseDate,
+    String? baseDate,
   ) async {
     final start =
-        DateTime.parse(baseDate)
+        (baseDate == null ? DateTime.now() : DateTime.parse(baseDate))
             .subtract(const Duration(days: 7))
             .millisecondsSinceEpoch ~/
         1000;
@@ -276,7 +294,9 @@ class LocalNavRepository {
       ).toIso8601String().substring(0, 10);
       points[date] = close.toDouble();
     }
-    if (!points.containsKey(baseDate)) throw StateError('缺少基准日行情');
+    if (baseDate != null && !points.containsKey(baseDate)) {
+      throw StateError('缺少基准日行情');
+    }
     return points;
   }
 
@@ -291,9 +311,17 @@ class LocalNavRepository {
     }
   }
 
+  Future<Map<String, double>> _fetchMarketQuoteWindow(String symbol) async {
+    try {
+      return await _fetchEastmoneyQuote(symbol, null);
+    } catch (_) {
+      return _fetchYahooQuote(symbol, null);
+    }
+  }
+
   Future<Map<String, double>> _fetchEastmoneyQuote(
     String symbol,
-    String baseDate,
+    String? baseDate,
   ) async {
     final secid = switch (symbol) {
       'QQQ' => '105.QQQ',
@@ -301,8 +329,8 @@ class LocalNavRepository {
       'CNY=X' => '133.USDCNH',
       _ => throw StateError('不支持的东方财富标的'),
     };
-    final start = DateTime.parse(baseDate)
-        .subtract(const Duration(days: 7))
+    final start = (baseDate == null ? DateTime.now() : DateTime.parse(baseDate))
+        .subtract(Duration(days: baseDate == null ? 14 : 7))
         .toIso8601String()
         .substring(0, 10)
         .replaceAll('-', '');
@@ -335,7 +363,9 @@ class LocalNavRepository {
       final close = double.tryParse(fields[2]);
       if (close != null && close > 0) points[fields[0]] = close;
     }
-    if (!points.containsKey(baseDate)) throw StateError('东方财富缺少基准日行情');
+    if (baseDate != null && !points.containsKey(baseDate)) {
+      throw StateError('东方财富缺少基准日行情');
+    }
     return points;
   }
 
