@@ -703,6 +703,8 @@ class _QuotaPageState extends State<QuotaPage> {
         PopupMenuButton<String>(
           tooltip: '排序方式',
           initialValue: sort,
+          padding: EdgeInsets.zero,
+          offset: const Offset(-18, 0),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(r),
           ),
