@@ -558,119 +558,100 @@ class _QuotaPageState extends State<QuotaPage> {
       child: InkWell(
         onTap: busy ? null : () => edit(q),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: scheme.outlineVariant.withValues(alpha: 0.65),
-              ),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.75),
             ),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${q['name']}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          '${q['code']}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                        Text(
-                          '近一年 ${_annualReturnText(q)}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: annual == null
-                                ? scheme.onSurfaceVariant
-                                : _returnColor(annual),
-                            fontWeight: annual == null
-                                ? FontWeight.normal
-                                : FontWeight.w600,
-                          ),
-                        ),
-                        if (userOverride) _badge(scheme, '手动'),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 14,
-                      runSpacing: 4,
-                      children: [
-                        _channelLine(
-                          theme,
-                          scheme,
-                          '代销',
-                          channel(q, 'distribution'),
-                          highlight: _highlightChannel(q, 'distribution'),
-                        ),
-                        _channelLine(
-                          theme,
-                          scheme,
-                          '直销',
-                          channel(q, 'direct'),
-                          highlight: _highlightChannel(q, 'direct'),
-                        ),
-                      ],
-                    ),
-                  ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                child: Text(
+                  '${q['name']}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              const SizedBox(width: 16),
-              SizedBox(
-                width: 116,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+              _quotaGridRow(
+                scheme,
+                left: Wrap(
+                  spacing: 8,
                   children: [
                     Text(
-                      '费率 ${_feeRateText(q)}',
-                      textAlign: TextAlign.right,
+                      '${q['code']}',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 5),
-                    Wrap(
-                      alignment: WrapAlignment.end,
-                      spacing: 0,
-                      children: [
-                        _cardAction(
-                          theme,
-                          scheme,
-                          '修改',
-                          busy ? null : () => edit(q),
-                        ),
-                        if (userOverride)
-                          _cardAction(
-                            theme,
-                            scheme,
-                            '恢复自动',
-                            busy
-                                ? null
-                                : () => run(
-                                    () => widget.repository.restore(
-                                      '${q['code']}',
-                                    ),
-                                  ),
-                          ),
-                      ],
+                    Text(
+                      '近一年 ${_annualReturnText(q)}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: annual == null
+                            ? scheme.onSurfaceVariant
+                            : _returnColor(annual),
+                        fontWeight: annual == null
+                            ? FontWeight.normal
+                            : FontWeight.w600,
+                      ),
+                    ),
+                    if (userOverride) _badge(scheme, '手动'),
+                  ],
+                ),
+                right: Wrap(
+                  spacing: 10,
+                  children: [
+                    _channelLine(
+                      theme,
+                      scheme,
+                      '代销',
+                      channel(q, 'distribution'),
+                      highlight: _highlightChannel(q, 'distribution'),
+                    ),
+                    _channelLine(
+                      theme,
+                      scheme,
+                      '直销',
+                      channel(q, 'direct'),
+                      highlight: _highlightChannel(q, 'direct'),
                     ),
                   ],
+                ),
+              ),
+              _quotaGridRow(
+                scheme,
+                left: Wrap(
+                  spacing: 4,
+                  runSpacing: 0,
+                  children: [
+                    _cardAction(
+                      theme,
+                      scheme,
+                      '修改',
+                      busy ? null : () => edit(q),
+                    ),
+                    if (userOverride)
+                      _cardAction(
+                        theme,
+                        scheme,
+                        '恢复自动',
+                        busy
+                            ? null
+                            : () => run(
+                                () => widget.repository.restore('${q['code']}'),
+                              ),
+                      ),
+                  ],
+                ),
+                right: Text(
+                  '费率 ${_feeRateText(q)}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
@@ -679,6 +660,48 @@ class _QuotaPageState extends State<QuotaPage> {
       ),
     );
   }
+
+  Widget _quotaGridRow(
+    ColorScheme scheme, {
+    required Widget left,
+    required Widget right,
+  }) => IntrinsicHeight(
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: scheme.outlineVariant.withValues(alpha: 0.75),
+                ),
+              ),
+            ),
+            child: left,
+          ),
+        ),
+        Container(
+          width: 1,
+          color: scheme.outlineVariant.withValues(alpha: 0.75),
+        ),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: scheme.outlineVariant.withValues(alpha: 0.75),
+                ),
+              ),
+            ),
+            child: right,
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _channelLine(
     ThemeData theme,
