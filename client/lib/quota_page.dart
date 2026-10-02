@@ -298,9 +298,9 @@ class _QuotaPageState extends State<QuotaPage> {
               ),
               const SizedBox(width: 12),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                _channelLine(theme, scheme, '代销', channel(q, 'distribution')),
+                _channelLine(theme, scheme, '代销', channel(q, 'distribution'), highlight: sort == 'distributionLimit'),
                 const SizedBox(height: 2),
-                _channelLine(theme, scheme, '直销', channel(q, 'direct')),
+                _channelLine(theme, scheme, '直销', channel(q, 'direct'), highlight: sort == 'directLimit'),
                 const SizedBox(height: 4),
                 Text('费率 ${_feeRateText(q)}', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
               ]),
@@ -315,9 +315,9 @@ class _QuotaPageState extends State<QuotaPage> {
     );
   }
 
-  Widget _channelLine(ThemeData theme, ColorScheme scheme, String label, QuotaChannel value) => Row(mainAxisSize: MainAxisSize.min, children: [
-    Text('${label} ', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
-    Text(_channelValueText(value), style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+  Widget _channelLine(ThemeData theme, ColorScheme scheme, String label, QuotaChannel value, {bool highlight = false}) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Text('${label} ', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant, fontWeight: highlight ? FontWeight.w700 : null)),
+    Text(_channelValueText(value), style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant, fontWeight: highlight ? FontWeight.w700 : null)),
   ]);
 
   String _channelValueText(QuotaChannel value) {
