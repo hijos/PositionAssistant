@@ -25,7 +25,7 @@ npm run db:migrate
 
 PostgreSQL、Docker Compose、集成测试、Flutter 和 APK 的完整步骤在 [`docs/project-guide.md`](docs/project-guide.md)。
 
-Node.js 修改至少运行对应的 `node --check` 和专项测试；Flutter 修改运行 `.tooling/flutter/bin/flutter.bat analyze` 与相关测试。Android 打包必须使用 `scripts\build-apk.bat`，不要使用 `flutter clean`。
+Node.js 修改至少运行对应的 `node --check` 和专项测试；Flutter 修改运行 `.tooling/flutter/bin/flutter.bat analyze` 与相关测试。Android 本地打包必须使用 `scripts\build-apk.bat`，不要使用 `flutter clean`；推送 `v*.*.*` tag 后，`.github/workflows/android-release.yml` 负责构建并发布 arm64-v8a、armeabi-v7a、x86_64 三个拆分 APK。
 
 ## 不可违反的约定
 

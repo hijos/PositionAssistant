@@ -102,6 +102,8 @@ scripts\build-apk.bat with-quota   # release，内置最新额度数据
 
 普通包输出为 `client\build\app\outputs\flutter-apk\持仓助手.apk`；`with-quota` 输出为 `持仓助手-带额度.apk`。两种产物应共存，脚本只清理本次同名旧文件和 Flutter 重复输出。脚本会注入额度服务地址；不要改为在 `client/` 直接运行 `flutter build apk`，也不要使用 `flutter clean` 破坏 Gradle 增量缓存。当前 release 使用默认 debug 签名，只适合安装验收，不能直接上架。
 
+推送形如 `v0.1.0` 的版本 tag 后，`.github/workflows/android-release.yml` 会在 GitHub Actions 中构建并自动创建 Release，发布三个拆分 APK：`arm64-v8a`、`armeabi-v7a` 和 `x86_64`，同时上传 `SHA256SUMS.txt`。该 CI 构建同样使用默认 debug 签名，只适合安装验收；正式上架前需要配置 release keystore 和 GitHub Secrets。
+
 ## 5. 架构与数据不变量
 
 - Express 原型和 Flutter 客户端并存。不要把 `data/db.json` 的原型数据误认为已经迁移到 PostgreSQL。
