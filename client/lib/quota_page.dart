@@ -189,10 +189,6 @@ class _QuotaPageState extends State<QuotaPage> {
   @override
   void dispose() {
     _queryController.dispose();
-    final storage = _preferencesStorage;
-    if (storage != null) {
-      _preferencesWrite.whenComplete(storage.close);
-    }
     super.dispose();
   }
 
