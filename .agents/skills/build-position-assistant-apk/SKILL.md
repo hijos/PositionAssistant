@@ -13,7 +13,7 @@ description: 为 PositionAssistant（持仓助手）项目打包 Android APK。�
 
 1. 确认当前目录为仓库根（`C:\Users\ms-ml\.ccgui\workspace\PositionAssistant`）。不要 `flutter clean`——会浪费数分钟重建 Gradle 缓存；增量构建即可，Flutter 会自动包含最新代码。
 
-2. **必须使用仓库根目录的 `scripts\build-apk.bat` 打包**，不要直接在 `client/` 下调用 `flutter build apk`。该脚本会注入 `QUOTA_SERVICE_URL`（当前为 `http://192.168.31.143:4100`），否则 APK 可能回退到手机上的 `127.0.0.1:4100`，导致无法访问电脑上的额度服务。
+2. **必须使用仓库根目录的 `scripts\build-apk.bat` 打包**，不要直接在 `client/` 下调用 `flutter build apk`。该脚本会注入云端额度服务地址 `QUOTA_SERVICE_URL=https://quota.yexl.top`；否则 APK 可能回退到手机上的 `127.0.0.1:4100`，导致无法访问额度服务。
 
    在项目根目录执行：
 

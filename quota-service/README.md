@@ -37,7 +37,7 @@ Corrections are counted by a salted server-side hash of the client IP. The servi
 The Flutter app integration will use a separate `QUOTA_SERVICE_URL`, so the quota service can run on a different host and port from the portfolio API:
 
 ```powershell
-flutter run --dart-define=QUOTA_SERVICE_URL=http://192.168.31.143:4100
+flutter run --dart-define=QUOTA_SERVICE_URL=https://quota.yexl.top
 ```
 
 Do not use `change-me-now` outside local development.

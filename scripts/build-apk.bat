@@ -10,7 +10,7 @@ rem ============================================
 set "ROOT=%~dp0.."
 set "CLIENT=%ROOT%\client"
 set "FLUTTER=%ROOT%\.tooling\flutter\bin\flutter.bat"
-set "QUOTA_SERVICE_URL=http://192.168.31.143:4100"
+set "QUOTA_SERVICE_URL=https://quota.yexl.top"
 set "BUNDLE_QUOTA_DATA=false"
 set "ARTIFACT_NAME=持仓助手.apk"
 
