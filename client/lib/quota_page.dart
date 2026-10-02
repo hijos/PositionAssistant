@@ -1,6 +1,23 @@
 import 'package:flutter/material.dart';
 import 'data/quota_repository.dart';
 
+// Fund names are stored in Chinese, while tie-breaking should follow
+// alphabetical company initials instead of Unicode code-point order.
+const _fundCompanyInitials = <String, String>{
+  '大': 'D', '万': 'W', '招': 'Z', '华': 'H', '易': 'Y', '南': 'N',
+  '广': 'G', '嘉': 'J', '富': 'F', '中': 'Z', '博': 'B', '工': 'G',
+  '建': 'J', '交': 'J', '汇': 'H', '景': 'J', '天': 'T', '鹏': 'P',
+  '国': 'G', '兴': 'X', '银': 'Y', '浦': 'P', '民': 'M', '平': 'P',
+  '睿': 'R', '宝': 'B', '长': 'C', '融': 'R', '上': 'S', '信': 'X',
+  '泰': 'T', '农': 'N', '添': 'T', '诺': 'N', '摩': 'M',
+};
+
+String _fundCompanySortKey(String name) {
+  if (name.isEmpty) return name;
+  final first = name.substring(0, 1);
+  return '${_fundCompanyInitials[first] ?? first.toUpperCase()}|$name';
+}
+
 class QuotaPage extends StatefulWidget {
   const QuotaPage({required this.repository, this.refreshToken = 0, super.key});
   final QuotaRepository repository;
@@ -197,7 +214,7 @@ class _QuotaPageState extends State<QuotaPage> {
       if (result != 0) return ascending ? result : -result;
 
       final familyA = families['${a['code']}']!, familyB = families['${b['code']}']!;
-      result = familyA.compareTo(familyB);
+      result = _fundCompanySortKey(familyA).compareTo(_fundCompanySortKey(familyB));
       if (result != 0) return result;
       result = shareClassRank(a).compareTo(shareClassRank(b));
       if (result != 0) return result;

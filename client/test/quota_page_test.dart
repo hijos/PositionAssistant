@@ -58,6 +58,15 @@ void main() {
     expect(d, lessThan(_top(tester, '大成纳斯达克100ETF联接(QDII)A')));
   });
 
+  testWidgets('equal quota funds use pinyin company order', (tester) async {
+    await pumpPage(tester, [
+      _quota('100001', '万家纳斯达克100指数发起式(QDII)A', direct: 100),
+      _quota('100002', '大成纳斯达克100ETF联接(QDII)A', direct: 100),
+    ]);
+    expect(_top(tester, '大成纳斯达克100ETF联接(QDII)A'),
+        lessThan(_top(tester, '万家纳斯达克100指数发起式(QDII)A')));
+  });
+
   testWidgets('排除C hides C-class funds only', (tester) async {
     await pumpPage(tester, [
       _quota('100001', '招商纳斯达克100ETF发起式联接(QDII)A', direct: 100),
