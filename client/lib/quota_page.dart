@@ -173,72 +173,79 @@ class _QuotaPageState extends State<QuotaPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, update) => AlertDialog(
           title: Text('修改 ${q['code']}'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DropdownButtonFormField<String>(
-                  initialValue: selected,
-                  decoration: const InputDecoration(labelText: '额度渠道'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'distribution',
-                      child: Text('代销渠道'),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: selected,
+                    decoration: const InputDecoration(labelText: '额度渠道'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'distribution',
+                        child: Text('代销渠道'),
+                      ),
+                      DropdownMenuItem(value: 'direct', child: Text('直销渠道')),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      update(() {
+                        selected = value;
+                        var nextStatus =
+                            '${channel(q, selected)['status'] ?? '限大额'}';
+                        if (nextStatus == '暂停') nextStatus = '暂停申购';
+                        selectedStatus = statusOptions.contains(nextStatus)
+                            ? nextStatus
+                            : '限大额';
+                        limit.text = selectedStatus == '限大额'
+                            ? '${channel(q, selected)['limit'] ?? ''}'
+                            : '';
+                      });
+                    },
+                  ),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey(selectedStatus),
+                    initialValue: selectedStatus,
+                    decoration: const InputDecoration(labelText: '申购状态'),
+                    items: [
+                      for (final option in statusOptions)
+                        DropdownMenuItem(value: option, child: Text(option)),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      update(() {
+                        selectedStatus = value;
+                        if (value != '限大额') limit.clear();
+                      });
+                    },
+                  ),
+                  TextField(
+                    controller: limit,
+                    enabled: selectedStatus == '限大额',
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: '单日限额（元，留空表示未披露）',
+                      helperText: selectedStatus == '限大额'
+                          ? null
+                          : '开放申购和暂停申购不设置单日限额',
                     ),
-                    DropdownMenuItem(value: 'direct', child: Text('直销渠道')),
-                  ],
-                  onChanged: (value) {
-                    if (value == null) return;
-                    update(() {
-                      selected = value;
-                      var nextStatus =
-                          '${channel(q, selected)['status'] ?? '限大额'}';
-                      if (nextStatus == '暂停') nextStatus = '暂停申购';
-                      selectedStatus = statusOptions.contains(nextStatus)
-                          ? nextStatus
-                          : '限大额';
-                      limit.text = selectedStatus == '限大额'
-                          ? '${channel(q, selected)['limit'] ?? ''}'
-                          : '';
-                    });
-                  },
-                ),
-                DropdownButtonFormField<String>(
-                  key: ValueKey(selectedStatus),
-                  initialValue: selectedStatus,
-                  decoration: const InputDecoration(labelText: '申购状态'),
-                  items: [
-                    for (final option in statusOptions)
-                      DropdownMenuItem(value: option, child: Text(option)),
-                  ],
-                  onChanged: (value) {
-                    if (value == null) return;
-                    update(() {
-                      selectedStatus = value;
-                      if (value != '限大额') limit.clear();
-                    });
-                  },
-                ),
-                TextField(
-                  controller: limit,
-                  enabled: selectedStatus == '限大额',
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: '单日限额（元，留空表示未披露）',
-                    helperText: selectedStatus == '限大额'
-                        ? null
-                        : '开放申购和暂停申购不设置单日限额',
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '当上传某特定额度的用户足够多时，会自动修正云端额度数据。',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  const SizedBox(height: 12),
+                  Text(
+                    '当上传某特定额度的用户足够多时，会自动修正云端额度数据。',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           actions: [
@@ -257,7 +264,7 @@ class _QuotaPageState extends State<QuotaPage> {
                 ),
                 const SizedBox(width: 8),
                 SizedBox(
-                  width: 80,
+                  width: 64,
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 48),
