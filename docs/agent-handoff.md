@@ -904,3 +904,11 @@
 - 已实现：管理页额度表格的代码、名称、分类、代销、直销、费率表头均可点击排序，再次点击切换升降序；代销/直销按状态和额度数值排序，名称排序按基金族归组，额度排序保持独立。
 - 验证：内嵌脚本 `node --check` 通过；`npm run test:quota-service`（3 项通过）。
 - 更新时间：2026-10-02。
+
+### 用户追加：修复华夏纳斯达克基金搜索缺失
+
+- 状态：done
+- 修改文件：`client/lib/data/fund_catalog_repository.dart`、`server/catalog/search.js`、`test/fund-search.test.js`、`client/test/fund_catalog_repository_test.dart`、`docs/agent-handoff.md`。
+- 已实现：放宽 ETF 联接过滤规则，支持“ETF发起式联接”等合法名称；客户端本地目录和服务端目录保持同一规则。华夏纳斯达克 `015299`/`015300` 可按名称和代码搜索，美元份额仍排除。
+- 验证：`node --check server/catalog/search.js`；`node --test test/fund-search.test.js`（3 项通过）；Flutter `analyze`（无问题）；`flutter test test/fund_catalog_repository_test.dart`（2 项通过）。
+- 更新时间：2026-10-02。

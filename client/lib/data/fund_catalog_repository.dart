@@ -98,7 +98,7 @@ class LocalFundCatalogRepository {
     final text = '${item['name']} ${item['type']}'.toUpperCase();
     if (RegExp(r'美元|美钞|美汇|港币|港元|欧元|英镑|日元|澳元|加元|新加坡元|瑞士法郎|外币|外汇|USD|HKD|EUR|GBP|JPY|AUD|CAD|SGD|CHF').hasMatch(text)) return false;
     if (RegExp(r'LOF|场内|交易型|封闭|REIT').hasMatch(text)) return false;
-    if (text.contains('ETF') && !RegExp(r'ETF[ -]*(联接|连接)').hasMatch(item['name'].toString().toUpperCase())) return false;
+    if (text.contains('ETF') && !RegExp(r'ETF[^\n]{0,24}(联接|连接)').hasMatch(item['name'].toString().toUpperCase())) return false;
     return RegExp(r'^(股票型|混合型|债券型|货币型|指数型|QDII|FOF)(-|$)').hasMatch(item['type'].toString().toUpperCase()) || item['type'].toString().toUpperCase().startsWith('指数型');
   }
 
