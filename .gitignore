@@ -11,15 +11,9 @@ node_modules/
 !.env.example
 
 # 临时文件与截图
-/.tmp-valid.json
-/.tmp-invalid.json
 /tmpLongImage.jpg
 /tmpLongImage(1).jpg
 /IMG_1127.PNG
-/accounting-check.cjs
-/integrate.cjs
-/integration-check.cjs
-/update-server.cjs
 /client/android-f43-*.png
 
 # 编辑器 / 系统
