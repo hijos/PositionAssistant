@@ -1,6 +1,6 @@
 ---
 name: build-position-assistant-apk
-description: 为 PositionAssistant（持仓助手）项目打包 Android APK。当用户在本项目中要求“打包 / 构建 / 出个 apk / 重新打包最新安装包 / 出 release 包”时使用；用户说“打包一个带额度数据的apk”时，先同步额度子服务最新数据并生成内置额度初始数据，产物命名为 持仓助手-带额度.apk。
+description: 为 PositionAssistant（持仓助手）项目打包 Android APK。当用户在本项目中要求“打包 / 构建 / 出个 apk / 重新打包最新安装包 / 出 release 包”时使用；默认只构建 arm64-v8a（arm-v8）架构；用户说“打包一个带额度数据的apk”时，先同步额度子服务最新数据并生成内置额度初始数据，产物命名为 持仓助手-带额度.apk。
 ---
 
 # 打包持仓助手 APK（PositionAssistant）
@@ -33,11 +33,11 @@ description: 为 PositionAssistant（持仓助手）项目打包 Android APK。�
    .\scripts\build-apk.bat with-quota
    ```
 
-   `with-quota` 模式会在构建前读取 `quota-service/data/db.json`，将其中最新的 `quotas` 数组同步到 `data/db.json`，生成临时 Flutter 资源并以 `BUNDLE_QUOTA_DATA=true` 编译。APK 首次安装时会把这批额度写入本地 SQLite，作为额度页面的初始数据；已有安装的数据和用户覆盖不会被启动时覆盖。构建完成后临时资源会清空，普通 APK 仍不预置额度数据。
+   所有模式都只构建 Android `arm64-v8a`（arm-v8）架构，不生成 `armeabi-v7a`、`x86_64` 或多架构组合包。`with-quota` 模式会在构建前读取 `quota-service/data/db.json`，将其中最新的 `quotas` 数组同步到 `data/db.json`，生成临时 Flutter 资源并以 `BUNDLE_QUOTA_DATA=true` 编译。APK 首次安装时会把这批额度写入本地 SQLite，作为额度页面的初始数据；已有安装的数据和用户覆盖不会被启动时覆盖。构建完成后临时资源会清空，普通 APK 仍不预置额度数据。
 
    首次或依赖变更时若脚本构建异常，先在 `client/` 下运行 `..\.tooling\flutter\bin\flutter.bat pub get`，再从项目根目录重新执行脚本。
 
-3. 构建会产生两份相同内容的 APK（Flutter 工具行为：`build/app/outputs/flutter-apk/` 是从 Gradle 输出 `build/app/outputs/apk/release/` 复制来的）。**只保留一份**：先删除旧的目标 APK，再把 Gradle 输出移动重命名过去。普通 release/debug 包的目标名是 `持仓助手.apk`；`with-quota` 模式的目标名是 `持仓助手-带额度.apk`。
+3. 构建会产生两份相同内容的 arm64-v8a APK（Flutter 工具行为：`build/app/outputs/flutter-apk/` 是从 Gradle 输出 `build/app/outputs/apk/release/` 复制来的）。**只保留一份**：先删除旧的目标 APK，再把 Gradle 输出移动重命名过去。普通 release/debug 包的目标名是 `持仓助手.apk`；`with-quota` 模式的目标名是 `持仓助手-带额度.apk`。
 
    **两种命名产物必须共存**：构建 `持仓助手.apk` 时不得删除输出目录里已有的 `持仓助手-带额度.apk`；构建 `持仓助手-带额度.apk` 时同样不得删除已有的 `持仓助手.apk`。只清理与本次构建同名的旧目标和 Flutter 复制出的 `app-release.apk` / `app-debug.apk`。
 

@@ -36,9 +36,9 @@ if /i "%BUNDLE_QUOTA_DATA%"=="true" (
     )
 )
 
-echo [1/3] flutter build apk --%MODE% with quota service %QUOTA_SERVICE_URL% ...
+echo [1/3] flutter build apk --%MODE% --target-platform android-arm64 with quota service %QUOTA_SERVICE_URL% ...
 pushd "%CLIENT%"
-call "%FLUTTER%" build apk --%MODE% --dart-define=QUOTA_SERVICE_URL=%QUOTA_SERVICE_URL% --dart-define=BUNDLE_QUOTA_DATA=%BUNDLE_QUOTA_DATA%
+call "%FLUTTER%" build apk --%MODE% --target-platform android-arm64 --dart-define=QUOTA_SERVICE_URL=%QUOTA_SERVICE_URL% --dart-define=BUNDLE_QUOTA_DATA=%BUNDLE_QUOTA_DATA%
 set "BUILD_EXIT=!ERRORLEVEL!"
 popd
 if /i "%BUNDLE_QUOTA_DATA%"=="true" (
