@@ -151,10 +151,15 @@ class _QuotaPageState extends State<QuotaPage> {
     return '${value >= 0 ? '+' : ''}${(value * 100).toStringAsFixed(2)}%';
   }
 
+  String _displayQuotaStatus(Object? raw) {
+    final status = '${raw ?? '未知'}';
+    return status == '暂停申购' ? '暂停' : status;
+  }
+
   Future<void> edit(Quota q) async {
     String selected = 'direct';
     final status = TextEditingController(
-      text: '${channel(q, selected)['status'] ?? '未知'}',
+      text: _displayQuotaStatus(channel(q, selected)['status']),
     );
     final limit = TextEditingController(
       text: '${channel(q, selected)['limit'] ?? ''}',
@@ -178,7 +183,9 @@ class _QuotaPageState extends State<QuotaPage> {
                   if (value == null) return;
                   update(() {
                     selected = value;
-                    status.text = '${channel(q, selected)['status'] ?? '未知'}';
+                    status.text = _displayQuotaStatus(
+                      channel(q, selected)['status'],
+                    );
                     limit.text = '${channel(q, selected)['limit'] ?? ''}';
                   });
                 },
@@ -591,7 +598,13 @@ class _QuotaPageState extends State<QuotaPage> {
                       ),
                     ),
                     Text(
-                      '近一年 ${_annualReturnText(q)}',
+                      '近一年',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      _annualReturnText(q),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: annual == null
                             ? scheme.onSurfaceVariant
@@ -712,7 +725,7 @@ class _QuotaPageState extends State<QuotaPage> {
     final status = '${value['status'] ?? '未知'}';
     if (status == '限大额') return _limitText(value);
     if (status == '未知') return '未披露';
-    return status;
+    return _displayQuotaStatus(status);
   }
 
   String _limitText(QuotaChannel value) {
