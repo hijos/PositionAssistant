@@ -1,6 +1,6 @@
 ---
 name: build-position-assistant-apk
-description: 为 PositionAssistant（持仓助手）项目打包最新 Android APK。当用户在本项目中要求"打包 / 构建 / 出个 apk / 重新打包最新安装包 / 出 release 包"等任何关于生成 APK 的请求时使用。产物固定命名为 持仓助手.apk。
+description: 为 PositionAssistant（持仓助手）项目打包 Android APK。当用户在本项目中要求“打包 / 构建 / 出个 apk / 重新打包最新安装包 / 出 release 包”时使用；用户说“打包一个带额度数据的apk”时，先同步额度子服务最新数据并生成内置额度初始数据，产物命名为 持仓助手-带额度.apk。
 ---
 
 # 打包持仓助手 APK（PositionAssistant）
@@ -27,19 +27,31 @@ description: 为 PositionAssistant（持仓助手）项目打包最新 Android A
    .\scripts\build-apk.bat debug
    ```
 
-   首次或依赖变更时若脚本构建异常，先在 `client/` 下运行 `..\.tooling\flutter\bin\flutter.bat pub get`，再从项目根目录重新执行脚本。
+   用户明确说“打包一个带额度数据的apk”时执行：
 
-3. 构建会产生两份相同内容的 APK（Flutter 工具行为：`build/app/outputs/flutter-apk/` 是从 Gradle 输出 `build/app/outputs/apk/release/` 复制来的）。**只保留一份**：先删除旧的 `持仓助手.apk`，再把 Gradle 输出移动重命名过去：
-
-   ```cmd
-   cmd /c "del /f build\app\outputs\flutter-apk\持仓助手.apk 2>nul & move /y build\app\outputs\apk\release\app-release.apk build\app\outputs\flutter-apk\持仓助手.apk"
+   ```powershell
+   .\scripts\build-apk.bat with-quota
    ```
 
-   最终唯一产物：`client\build\app\outputs\flutter-apk\持仓助手.apk`（与 `app-release.apk` 并存，内容相同，删除其一不影响安装）。
+   `with-quota` 模式会在构建前读取 `quota-service/data/db.json`，将其中最新的 `quotas` 数组同步到 `data/db.json`，生成临时 Flutter 资源并以 `BUNDLE_QUOTA_DATA=true` 编译。APK 首次安装时会把这批额度写入本地 SQLite，作为额度页面的初始数据；已有安装的数据和用户覆盖不会被启动时覆盖。构建完成后临时资源会清空，普通 APK 仍不预置额度数据。
 
-4. 验证 LastWriteTime 为当前时间、大小约 50MB，把绝对路径告知用户：
+   首次或依赖变更时若脚本构建异常，先在 `client/` 下运行 `..\.tooling\flutter\bin\flutter.bat pub get`，再从项目根目录重新执行脚本。
 
-   `C:\Users\ms-ml\.ccgui\workspace\PositionAssistant\client\build\app\outputs\flutter-apk\持仓助手.apk`
+3. 构建会产生两份相同内容的 APK（Flutter 工具行为：`build/app/outputs/flutter-apk/` 是从 Gradle 输出 `build/app/outputs/apk/release/` 复制来的）。**只保留一份**：先删除旧的目标 APK，再把 Gradle 输出移动重命名过去。普通 release/debug 包的目标名是 `持仓助手.apk`；`with-quota` 模式的目标名是 `持仓助手-带额度.apk`。
+
+   `scripts\build-apk.bat` 会调用 `scripts\rename-apk.ps1` 完成删除旧目标和移动重命名，不要手动复制 APK。
+
+   最终产物：
+
+   - 普通包：`client\build\app\outputs\flutter-apk\持仓助手.apk`
+   - 带额度包：`client\build\app\outputs\flutter-apk\持仓助手-带额度.apk`
+
+   `app-release.apk` 或 `app-debug.apk` 不保留为重复交付文件。
+
+4. 验证 LastWriteTime 为当前时间、大小约 50MB，把对应的绝对路径告知用户：
+
+   - 普通包：`C:\Users\ms-ml\.ccgui\workspace\PositionAssistant\client\build\app\outputs\flutter-apk\持仓助手.apk`
+   - 带额度包：`C:\Users\ms-ml\.ccgui\workspace\PositionAssistant\client\build\app\outputs\flutter-apk\持仓助手-带额度.apk`
 
 ## 注意
 
