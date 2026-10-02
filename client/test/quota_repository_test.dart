@@ -4,6 +4,41 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:position_assistant/data/quota_repository.dart';
+import 'package:position_assistant/data/repository.dart';
+
+class _MemoryRepository implements Repository {
+  final Map<String, Map<String, Map<String, dynamic>>> _collections = {};
+
+  Map<String, Map<String, dynamic>> _collection(String name) =>
+      _collections.putIfAbsent(name, () => {});
+
+  @override
+  Future<Map<String, dynamic>?> get(String collection, String id) async {
+    final value = _collection(collection)[id];
+    return value == null ? null : Map<String, dynamic>.from(value);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> list(String collection) async =>
+      _collection(collection).values.map(Map<String, dynamic>.from).toList();
+
+  @override
+  Future<void> put(String collection, String id, Map<String, dynamic> value) async {
+    _collection(collection)[id] = Map<String, dynamic>.from(value);
+  }
+
+  @override
+  Future<void> delete(String collection, String id) async {
+    _collection(collection).remove(id);
+  }
+
+  @override
+  Future<T> transaction<T>(Future<T> Function(RepositorySession session) action) =>
+      action(this);
+
+  @override
+  Future<void> close() async {}
+}
 
 void main() {
   test('classifies supported RMB Nasdaq and S&P QDII funds', () {
@@ -142,6 +177,54 @@ void main() {
     expect(retried.duplicate, isTrue);
     expect(idempotencyKeys, hasLength(2));
     expect(idempotencyKeys[1], idempotencyKeys[0]);
+    repository.close();
+  });
+
+  test('clears a manual override after cloud data catches up', () async {
+    var refreshCount = 0;
+    final storage = _MemoryRepository();
+    final repository = CloudQuotaRepository(
+      open: () async => storage,
+      client: MockClient((request) async {
+        refreshCount++;
+        final limit = refreshCount == 1 ? 50 : 10;
+        return http.Response.bytes(
+          utf8.encode(jsonEncode({
+            'version': refreshCount,
+            'items': [
+              {
+                'code': '000001',
+                'name': '测试纳指基金',
+                'category': '纳斯达克100',
+                'channels': {
+                  'direct': {'status': '限大额', 'limit': limit},
+                },
+              },
+            ],
+          })),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+      annualReturnSource: EastmoneyAnnualReturnSource(
+        client: MockClient((request) async => http.Response('', 500)),
+      ),
+    );
+
+    await repository.refresh();
+    await repository.setOverride('000001', {
+      'channel': 'direct',
+      'status': '限大额',
+      'limit': 10,
+    });
+    expect((await repository.list()).single['valueSource'], 'user');
+
+    await repository.refresh();
+
+    final item = (await repository.list()).single;
+    expect(item['valueSource'], 'automatic');
+    expect(await storage.list('quotaOverrides'), isEmpty);
+    expect(repository.takeUpdateNotice(), isNull);
     repository.close();
   });
 }

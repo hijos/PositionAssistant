@@ -305,6 +305,22 @@ Map<String, dynamic> mergeQuotaOverride(Quota base, Quota? override) {
   };
 }
 
+bool _quotaOverrideMatches(Quota base, Quota override) {
+  final rawFields = override['overrideFields'];
+  if (rawFields is! List || rawFields.isEmpty) return false;
+  final rawChannels = base['channels'];
+  if (rawChannels is! Map) return false;
+  for (final rawField in rawFields) {
+    final parts = '$rawField'.split('.');
+    if (parts.length != 3 || parts[0] != 'channels') return false;
+    final channel = rawChannels[parts[1]];
+    final current = channel is Map ? channel[parts[2]] : null;
+    final expected = override['$rawField'] ?? override[parts[2]];
+    if (current != expected) return false;
+  }
+  return true;
+}
+
 class LocalAutomaticQuotaRepository implements QuotaRepository {
   LocalAutomaticQuotaRepository(this.open, {EastmoneyQuotaSource? source, FundManagerDirectQuotaSource? directSource, LocalFundCatalogRepository? catalog})
       : source = source ?? EastmoneyQuotaSource(), directSource = directSource ?? FundManagerDirectQuotaSource(), catalog = catalog ?? LocalFundCatalogRepository(open);
@@ -410,7 +426,7 @@ class CloudQuotaRepository implements QuotaRepository {
   Future<List<Quota>> _visible() async {
     await _loadLocal();
     final byCode = <String, Quota>{
-      for (final item in _items) '${item['code']}': normalizeQuota(item),
+      for (final item in _items) '${item['code']}': mergeQuotaOverride(normalizeQuota(item), null),
     };
     for (final entry in _overrides.entries) {
       final base = byCode[entry.key];
@@ -433,13 +449,14 @@ class CloudQuotaRepository implements QuotaRepository {
 
   @override
   Future<List<Quota>> refresh() async {
+    // Refresh may run before the first list(), so load persisted overrides
+    // before checking whether the cloud value has caught up with them.
+    await _loadLocal();
     final decoded = await _request('/api/quotas');
     if (decoded is! Map || decoded['items'] is! List) throw Exception('额度云端服务响应无效');
     final version = int.tryParse('${decoded['version']}');
-    if (_version != null && version != null && version > _version!) {
-      _updateNotice = '云端额度已有更新，可在修改弹窗中恢复云端数据';
-    }
-    _version = version;
+    final previousVersion = _version;
+    final cloudUpdated = previousVersion != null && version != null && version > previousVersion;
     final next = (decoded['items'] as List)
         .whereType<Map>()
         .map((item) => normalizeQuota(Map<String, dynamic>.from(item)))
@@ -465,7 +482,20 @@ class CloudQuotaRepository implements QuotaRepository {
         // Performance data is supplementary; quota refresh remains usable.
       }
     }));
-    _items = next;
+    final resolvedOverrides = <String>[];
+    for (final entry in _overrides.entries) {
+      final cloud = next.cast<Quota?>().firstWhere(
+            (item) => item != null && '${item['code']}' == entry.key,
+            orElse: () => null,
+          );
+      if (cloud != null && _quotaOverrideMatches(cloud, entry.value)) {
+        resolvedOverrides.add(entry.key);
+      }
+    }
+    final hasUnresolvedOverride = _overrides.keys.any((code) => !resolvedOverrides.contains(code));
+    if (cloudUpdated && hasUnresolvedOverride) {
+      _updateNotice = '云端额度已有更新，可在修改弹窗中恢复云端数据';
+    }
     if (open != null) {
       final storage = await open!();
       await storage.transaction((session) async {
@@ -475,11 +505,19 @@ class CloudQuotaRepository implements QuotaRepository {
         for (final item in next) {
           await session.put('quotas', '${item['code']}', item);
         }
+        for (final code in resolvedOverrides) {
+          await session.delete('quotaOverrides', code);
+        }
         await session.put('quotaServiceMeta', 'state', {
           'version': version,
           'updatedAt': decoded['updatedAt'],
         });
       });
+    }
+    _items = next;
+    _version = version;
+    for (final code in resolvedOverrides) {
+      _overrides.remove(code);
     }
     return _visible();
   }
