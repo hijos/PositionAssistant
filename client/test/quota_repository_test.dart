@@ -27,6 +27,18 @@ void main() {
     expect(result['sourceType'], 'public');
   });
 
+  test('reads one-year return by fund code from Eastmoney data script', () async {
+    final source = EastmoneyAnnualReturnSource(
+      client: MockClient((request) async {
+        expect(request.url.path, '/pingzhongdata/012752.js');
+        return http.Response('var syl_1n="14.56";', 200);
+      }),
+    );
+    expect(await source.fetch('012752'), closeTo(0.1456, 0.00001));
+    expect(await source.fetch('bad'), isNull);
+    source.close();
+  });
+
   test('cloud repository reads the independent service and uploads corrections', () async {
     Map<String, dynamic>? uploadBody;
     final idempotencyKeys = <String>[];

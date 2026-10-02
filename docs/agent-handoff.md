@@ -920,3 +920,12 @@
 - 已实现：移除 `159513`、`159659`、`159612`、`159655`、`513500`、`513650` 等直接交易型 ETF；服务启动时也会过滤名称含 ETF 但不含“联接/连接”的条目。ETF 联接及发起式联接基金保留。
 - 验证：`node --check quota-service/index.js`；`node --test test/quota-service.test.js`（3 项通过）。
 - 更新时间：2026-10-02。
+
+### 用户追加：额度页面按基金代码补齐近一年收益
+
+- 状态：done
+- 修改文件：`client/lib/data/quota_repository.dart`、`client/test/quota_repository_test.dart`、本文件。
+- 已实现：云端额度刷新在额度服务返回记录后，按六位基金代码请求东方财富 `pingzhongdata/{code}.js`，解析 `syl_1n` 百分比并转换为客户端使用的小数收益率；已有服务端值优先，网络失败保留上一轮缓存值，避免影响额度刷新和用户覆盖。
+- 验证：`flutter analyze lib/data/quota_repository.dart test/quota_repository_test.dart` 无问题；`flutter test test/quota_repository_test.dart` 4 项通过。
+- 未覆盖：真实 Android 设备和额度服务联通验收待后续部署环境执行。
+- 更新时间：2026-10-02。

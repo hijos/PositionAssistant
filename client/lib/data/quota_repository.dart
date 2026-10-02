@@ -160,6 +160,29 @@ class EastmoneyQuotaSource implements QuotaSource {
   @override void close() => client.close();
 }
 
+/// Reads the one-year return published in Eastmoney's fund data script.
+/// The quota service is intentionally only a quota source, so the app fills
+/// this display-only field from the fund code when it refreshes cloud data.
+class EastmoneyAnnualReturnSource {
+  EastmoneyAnnualReturnSource({http.Client? client}) : client = client ?? http.Client();
+  final http.Client client;
+
+  Future<double?> fetch(String code) async {
+    final normalized = code.trim();
+    if (!RegExp(r'^\d{6}$').hasMatch(normalized)) return null;
+    final response = await client
+        .get(Uri.parse('https://fund.eastmoney.com/pingzhongdata/$normalized.js'), headers: {'User-Agent': 'Mozilla/5.0'})
+        .timeout(const Duration(seconds: 20));
+    if (response.statusCode != 200) return null;
+    final script = utf8.decode(response.bodyBytes, allowMalformed: true);
+    final match = RegExp(r'''\b(syl_1n|SYL_1N)\s*=\s*["']([+-]?(\d+(\.\d*)?|\.\d+))["']''').firstMatch(script);
+    final percent = match == null ? null : double.tryParse(match.group(2)!);
+    return percent != null && percent.isFinite ? percent / 100 : null;
+  }
+
+  void close() => client.close();
+}
+
 class FundManagerDirectQuotaSource implements QuotaSource {
   FundManagerDirectQuotaSource({http.Client? client}) : client = client ?? http.Client();
   final http.Client client;
@@ -302,10 +325,13 @@ class LocalAutomaticQuotaRepository implements QuotaRepository {
 }
 
 class CloudQuotaRepository implements QuotaRepository {
-  CloudQuotaRepository({this.open, http.Client? client}) : client = client ?? http.Client();
+  CloudQuotaRepository({this.open, http.Client? client, EastmoneyAnnualReturnSource? annualReturnSource})
+      : client = client ?? http.Client(),
+        annualReturnSource = annualReturnSource ?? EastmoneyAnnualReturnSource();
 
   final Future<Repository> Function()? open;
   final http.Client client;
+  final EastmoneyAnnualReturnSource annualReturnSource;
   List<Quota> _items = [];
   final Map<String, Quota> _overrides = {};
   int? _version;
@@ -379,6 +405,27 @@ class CloudQuotaRepository implements QuotaRepository {
         .whereType<Map>()
         .map((item) => normalizeQuota(Map<String, dynamic>.from(item)))
         .toList();
+    // The independent quota service does not scrape performance data. Fill
+    // the display field by code, while retaining a cached value on failure.
+    await Future.wait(next.map((item) async {
+      if (item['annualReturn'] == null) {
+        Quota? previous;
+        for (final old in _items) {
+          if ('${old['code']}' == '${item['code']}') {
+            previous = old;
+            break;
+          }
+        }
+        if (previous?['annualReturn'] != null) item['annualReturn'] = previous!['annualReturn'];
+      }
+      if (item['annualReturn'] != null) return;
+      try {
+        final value = await annualReturnSource.fetch('${item['code']}');
+        if (value != null) item['annualReturn'] = value;
+      } catch (_) {
+        // Performance data is supplementary; quota refresh remains usable.
+      }
+    }));
     _items = next;
     if (open != null) {
       final storage = await open!();
@@ -472,7 +519,10 @@ class CloudQuotaRepository implements QuotaRepository {
     return 'quota-${base64Url.encode(utf8.encode(canonical))}';
   }
 
-  void close() => client.close();
+  void close() {
+    client.close();
+    annualReturnSource.close();
+  }
 }
 
 class RemoteQuotaRepository implements QuotaRepository {
