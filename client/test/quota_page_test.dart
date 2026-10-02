@@ -107,6 +107,36 @@ void main() {
     );
   });
 
+  testWidgets('按基金名称 sorts by pinyin A-to-Z like the quota service', (
+    tester,
+  ) async {
+    await pumpPage(tester, [
+      _quota('100001', '万家纳斯达克100指数发起式(QDII)A', direct: 100),
+      _quota('100002', '宝盈纳斯达克100指数发起(QDII)A人民币', direct: 100),
+      _quota('100003', '大成纳斯达克100ETF联接(QDII)A', direct: 100),
+    ]);
+    await tester.tap(find.text('按直销额度'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('按基金名称').last);
+    await tester.pumpAndSettle();
+    // Descending by default: 万家 (W) ahead of 宝盈 (B).
+    expect(
+      _top(tester, '万家纳斯达克100指数发起式(QDII)A'),
+      lessThan(_top(tester, '宝盈纳斯达克100指数发起(QDII)A人民币')),
+    );
+    // Ascending flips to pinyin A-to-Z: 宝盈 (B), 大成 (D), 万家 (W).
+    await tester.tap(find.byIcon(Icons.arrow_downward));
+    await tester.pumpAndSettle();
+    expect(
+      _top(tester, '宝盈纳斯达克100指数发起(QDII)A人民币'),
+      lessThan(_top(tester, '大成纳斯达克100ETF联接(QDII)A')),
+    );
+    expect(
+      _top(tester, '大成纳斯达克100ETF联接(QDII)A'),
+      lessThan(_top(tester, '万家纳斯达克100指数发起式(QDII)A')),
+    );
+  });
+
   testWidgets('排除C hides C-class funds only', (tester) async {
     await pumpPage(tester, [
       _quota('100001', '招商纳斯达克100ETF发起式联接(QDII)A', direct: 100),

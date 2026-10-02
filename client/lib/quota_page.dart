@@ -2,50 +2,74 @@ import 'package:flutter/material.dart';
 
 import 'data/quota_repository.dart';
 
-// Fund names are stored in Chinese, while tie-breaking should follow
-// alphabetical company initials instead of Unicode code-point order.
-const _fundCompanyInitials = <String, String>{
-  '大': 'D',
-  '万': 'W',
-  '招': 'Z',
-  '华': 'H',
-  '易': 'Y',
-  '南': 'N',
-  '广': 'G',
-  '嘉': 'J',
-  '富': 'F',
-  '中': 'Z',
-  '博': 'B',
-  '工': 'G',
-  '建': 'J',
-  '交': 'J',
-  '汇': 'H',
-  '景': 'J',
-  '天': 'T',
-  '鹏': 'P',
-  '国': 'G',
-  '兴': 'X',
-  '银': 'Y',
-  '浦': 'P',
-  '民': 'M',
-  '平': 'P',
-  '睿': 'R',
-  '宝': 'B',
-  '长': 'C',
-  '融': 'R',
-  '上': 'S',
-  '信': 'X',
-  '泰': 'T',
-  '农': 'N',
-  '添': 'T',
-  '诺': 'N',
-  '摩': 'M',
+// Fund names are stored in Chinese. Alphabetical sorting follows each
+// character's pinyin reading, mirroring the quota sub-service's zh-CN
+// collation, so e.g. 宝盈 (baoying) sorts before 万家 (wanjia) instead of
+// Unicode code-point order. The table covers every CJK character in the
+// quota fund catalog; unmapped characters keep their raw form and sink after
+// Latin-keyed names, so extend the table when the catalog adds new ones.
+const _charPinyin = <String, String>{
+  '安': 'an',
+  '柏': 'bai',
+  '宝': 'bao',
+  '标': 'biao',
+  '币': 'bi',
+  '博': 'bo',
+  '钞': 'chao',
+  '成': 'cheng',
+  '达': 'da',
+  '大': 'da',
+  '等': 'deng',
+  '发': 'fa',
+  '方': 'fang',
+  '富': 'fu',
+  '根': 'gen',
+  '广': 'guang',
+  '国': 'guo',
+  '弘': 'hong',
+  '华': 'hua',
+  '汇': 'hui',
+  '家': 'jia',
+  '嘉': 'jia',
+  '建': 'jian',
+  '接': 'jie',
+  '克': 'ke',
+  '联': 'lian',
+  '美': 'mei',
+  '民': 'min',
+  '摩': 'mo',
+  '纳': 'na',
+  '南': 'nan',
+  '普': 'pu',
+  '起': 'qi',
+  '权': 'quan',
+  '人': 'ren',
+  '瑞': 'rui',
+  '商': 'shang',
+  '时': 'shi',
+  '实': 'shi',
+  '式': 'shi',
+  '数': 'shu',
+  '斯': 'si',
+  '泰': 'tai',
+  '天': 'tian',
+  '添': 'tian',
+  '万': 'wan',
+  '夏': 'xia',
+  '信': 'xin',
+  '易': 'yi',
+  '盈': 'ying',
+  '招': 'zhao',
+  '指': 'zhi',
+  '重': 'zhong',
 };
 
-String _fundCompanySortKey(String name) {
-  if (name.isEmpty) return name;
-  final first = name.substring(0, 1);
-  return '${_fundCompanyInitials[first] ?? first.toUpperCase()}|$name';
+String _pinyinSortKey(String name) {
+  final buffer = StringBuffer();
+  for (final ch in name.split('')) {
+    buffer.write(_charPinyin[ch] ?? ch);
+  }
+  return buffer.toString();
 }
 
 class QuotaPage extends StatefulWidget {
@@ -405,27 +429,34 @@ class _QuotaPageState extends State<QuotaPage> {
         .toList();
     // Sort by each fund's own quota first. Only equal quota values use the
     // family name and share-class letter as tie-breakers, keeping equal-limit
-    // A/C/D/I share classes together with A first.
+    // A/C/D/I share classes together with A first. 按基金名称 instead sorts
+    // the whole list by the family name's pinyin letters, mirroring the quota
+    // sub-service's A-to-Z order.
     final families = {
       for (final q in filtered) '${q['code']}': quotaFamilyName('${q['name']}'),
     };
+    String familyKey(Quota q) => _pinyinSortKey(families['${q['code']}']!);
     filtered.sort((a, b) {
-      final av = sort == 'name' ? '${a['name']}' : sortValue(a);
-      final bv = sort == 'name' ? '${b['name']}' : sortValue(b);
-      var result = av is num && bv is num
-          ? av.compareTo(bv)
-          : '$av'.compareTo('$bv');
-      if (result != 0) return ascending ? result : -result;
-
-      final familyA = families['${a['code']}']!,
-          familyB = families['${b['code']}']!;
-      result = _fundCompanySortKey(familyA)
-          .compareTo(_fundCompanySortKey(familyB));
-      if (result != 0) return result;
-      result = shareClassRank(a).compareTo(shareClassRank(b));
-      if (result != 0) return result;
-      result = '${a['name']}'.compareTo('${b['name']}');
-      return result == 0 ? '${a['code']}'.compareTo('${b['code']}') : result;
+      if (sort == 'name') {
+        final result = familyKey(a).compareTo(familyKey(b));
+        if (result != 0) return ascending ? result : -result;
+      } else {
+        final av = sortValue(a), bv = sortValue(b);
+        final result = av is num && bv is num
+            ? av.compareTo(bv)
+            : '$av'.compareTo('$bv');
+        if (result != 0) return ascending ? result : -result;
+        final familyResult = familyKey(a).compareTo(familyKey(b));
+        if (familyResult != 0) return familyResult;
+      }
+      final classResult = shareClassRank(a).compareTo(shareClassRank(b));
+      if (classResult != 0) return classResult;
+      final nameResult = _pinyinSortKey(
+        '${a['name']}',
+      ).compareTo(_pinyinSortKey('${b['name']}'));
+      return nameResult == 0
+          ? '${a['code']}'.compareTo('${b['code']}')
+          : nameResult;
     });
 
     return Stack(
