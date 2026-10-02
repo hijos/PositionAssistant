@@ -912,3 +912,11 @@
 - 已实现：放宽 ETF 联接过滤规则，支持“ETF发起式联接”等合法名称；客户端本地目录和服务端目录保持同一规则。华夏纳斯达克 `015299`/`015300` 可按名称和代码搜索，美元份额仍排除。
 - 验证：`node --check server/catalog/search.js`；`node --test test/fund-search.test.js`（3 项通过）；Flutter `analyze`（无问题）；`flutter test test/fund_catalog_repository_test.dart`（2 项通过）。
 - 更新时间：2026-10-02。
+
+### 用户追加：额度目录排除场内 ETF
+
+- 状态：done
+- 修改文件：`quota-service/fund-catalog.json`、`quota-service/index.js`、`test/quota-service.test.js`、`docs/agent-handoff.md`。
+- 已实现：移除 `159513`、`159659`、`159612`、`159655`、`513500`、`513650` 等直接交易型 ETF；服务启动时也会过滤名称含 ETF 但不含“联接/连接”的条目。ETF 联接及发起式联接基金保留。
+- 验证：`node --check quota-service/index.js`；`node --test test/quota-service.test.js`（3 项通过）。
+- 更新时间：2026-10-02。

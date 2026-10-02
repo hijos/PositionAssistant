@@ -36,9 +36,11 @@ test('independent quota service supports manual data, consensus and safe revoke'
   assert.equal(byCode.get('012752'), '建信纳斯达克100指数(QDII)C人民币');
   assert.equal(byCode.get('021778'), '广发纳指100ETF联接(QDII)人民币F');
   const nasdaqCodes = catalog.body.items.filter(item => item.category === '纳斯达克100').map(item => item.code);
-  assert.equal(nasdaqCodes.length, 43);
-  assert.ok(nasdaqCodes.includes('159513'));
+  assert.equal(nasdaqCodes.length, 41);
+  assert.equal(nasdaqCodes.includes('159513'), false);
+  assert.equal(nasdaqCodes.includes('159659'), false);
   assert.ok(nasdaqCodes.includes('161130'));
+  assert.equal(catalog.body.items.some(item => /ETF/.test(item.name) && !/(联接|连接)/.test(item.name)), false);
   const position = code => catalog.body.items.findIndex(item => item.code === code);
   assert.equal(position('008971'), position('000834') + 1);
   assert.equal(position('015300'), position('015299') + 1);

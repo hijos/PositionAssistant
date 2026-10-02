@@ -28,6 +28,13 @@ function compareFunds(a, b) {
     || String(a.code).localeCompare(String(b.code));
 }
 
+function isSearchableCatalogFund(item) {
+  const name = String(item.name || '').normalize('NFKC').toUpperCase();
+  // Direct exchange-traded ETFs are not OTC quota products. ETF联接/连接
+  // funds remain searchable, including names with “发起式” between ETF and 联接.
+  return !/ETF/.test(name) || /ETF[^\n]{0,24}(联接|连接)/.test(name);
+}
+
 // Keep the admin autocomplete source safe to use even if the seed file is
 // edited by hand: a duplicate code would make the UI choose an arbitrary
 // name, and a malformed code cannot be a valid fund identifier.
@@ -37,6 +44,7 @@ if (!Array.isArray(FUND_CATALOG) || FUND_CATALOG.some(item => !item || !/^\d{6}$
 if (new Set(FUND_CATALOG.map(item => String(item.code))).size !== FUND_CATALOG.length) {
   throw new Error('quota-service fund catalog contains duplicate codes');
 }
+FUND_CATALOG.splice(0, FUND_CATALOG.length, ...FUND_CATALOG.filter(isSearchableCatalogFund));
 FUND_CATALOG.sort(compareFunds);
 
 function clone(value) { return value == null ? value : JSON.parse(JSON.stringify(value)); }
