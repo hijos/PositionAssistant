@@ -559,8 +559,10 @@ class _QuotaPageState extends State<QuotaPage> {
         onTap: busy ? null : () => edit(q),
         child: Container(
           decoration: BoxDecoration(
-            border: Border.all(
-              color: scheme.outlineVariant.withValues(alpha: 0.75),
+            border: Border(
+              bottom: BorderSide(
+                color: scheme.outlineVariant.withValues(alpha: 0.65),
+              ),
             ),
           ),
           child: Column(
@@ -665,39 +667,15 @@ class _QuotaPageState extends State<QuotaPage> {
     ColorScheme scheme, {
     required Widget left,
     required Widget right,
-  }) => IntrinsicHeight(
+  }) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
     child: Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        Expanded(child: left),
+        const SizedBox(width: 12),
         Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: scheme.outlineVariant.withValues(alpha: 0.75),
-                ),
-              ),
-            ),
-            child: left,
-          ),
-        ),
-        Container(
-          width: 1,
-          color: scheme.outlineVariant.withValues(alpha: 0.75),
-        ),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: scheme.outlineVariant.withValues(alpha: 0.75),
-                ),
-              ),
-            ),
-            child: right,
-          ),
+          child: Align(alignment: Alignment.centerLeft, child: right),
         ),
       ],
     ),
