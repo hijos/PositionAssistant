@@ -569,7 +569,7 @@ class _QuotaPageState extends State<QuotaPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
                 child: Text(
                   '${q['name']}',
                   maxLines: 1,
@@ -675,7 +675,7 @@ class _QuotaPageState extends State<QuotaPage> {
         Expanded(child: left),
         const SizedBox(width: 12),
         Expanded(
-          child: Align(alignment: Alignment.centerLeft, child: right),
+          child: Align(alignment: Alignment.centerRight, child: right),
         ),
       ],
     ),
