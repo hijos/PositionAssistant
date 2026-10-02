@@ -11,7 +11,7 @@ class QuotaPage extends StatefulWidget {
 
 class _QuotaPageState extends State<QuotaPage> {
   List<Quota> items = [];
-  bool loading = true, busy = false, ascending = false;
+  bool loading = true, busy = false, ascending = false, excludeC = false;
   String? error;
   String category = '全部', query = '', sort = 'directLimit';
 
@@ -19,6 +19,7 @@ class _QuotaPageState extends State<QuotaPage> {
   static const sortOptions = [
     ('directLimit', '按直销额度'),
     ('distributionLimit', '按代销额度'),
+    ('maxLimit', '按最大额度'),
     ('name', '按基金名称'),
   ];
 
@@ -150,15 +151,59 @@ class _QuotaPageState extends State<QuotaPage> {
   dynamic sortValue(Quota q) {
     if (sort == 'directLimit') return quotaAmount(channel(q, 'direct')['limit']) ?? -1;
     if (sort == 'distributionLimit') return quotaAmount(channel(q, 'distribution')['limit']) ?? -1;
+    if (sort == 'maxLimit') {
+      final direct = quotaAmount(channel(q, 'direct')['limit']) ?? -1;
+      final distribution = quotaAmount(channel(q, 'distribution')['limit']) ?? -1;
+      return direct > distribution ? direct : distribution;
+    }
     return '${q[sort]}';
+  }
+
+  /// Rank of a fund inside its family: lettered share classes first in
+  /// alphabetical order (A, C, D, I ...), unlettered names last.
+  int shareClassRank(Quota q) {
+    final letter = quotaShareClass('${q['name']}');
+    return letter == null ? 100 : letter.codeUnitAt(0) - 0x41;
+  }
+
+  /// Whether the channel line is bolded under the current sort. For
+  /// 按最大额度 only the channel carrying the larger limit is highlighted
+  /// (both when equal; none when neither discloses a limit).
+  bool _highlightChannel(Quota q, String name) {
+    if (sort == 'directLimit') return name == 'direct';
+    if (sort == 'distributionLimit') return name == 'distribution';
+    if (sort != 'maxLimit') return false;
+    final value = quotaAmount(channel(q, name)['limit']);
+    final other = quotaAmount(channel(q, name == 'direct' ? 'distribution' : 'direct')['limit']);
+    return value != null && (other == null || value >= other);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final filtered = items.where((q) => (category == '全部' || q['category'] == category) && '${q['name']} ${q['code']}'.toLowerCase().contains(query.toLowerCase())).toList();
-    filtered.sort((a, b) { final av = sortValue(a), bv = sortValue(b); final result = av is num && bv is num ? av.compareTo(bv) : '${av}'.compareTo('${bv}'); return ascending ? result : -result; });
+    final filtered = items.where((q) =>
+        (category == '全部' || q['category'] == category) &&
+        (!excludeC || quotaShareClass('${q['name']}') != 'C') &&
+        '${q['name']} ${q['code']}'.toLowerCase().contains(query.toLowerCase())).toList();
+    // Sort by each fund's own quota first. Only equal quota values use the
+    // family name and share-class letter as tie-breakers, keeping equal-limit
+    // A/C/D/I share classes together with A first.
+    final families = {for (final q in filtered) '${q['code']}': quotaFamilyName('${q['name']}')};
+    filtered.sort((a, b) {
+      final av = sort == 'name' ? '${a['name']}' : sortValue(a);
+      final bv = sort == 'name' ? '${b['name']}' : sortValue(b);
+      var result = av is num && bv is num ? av.compareTo(bv) : '$av'.compareTo('$bv');
+      if (result != 0) return ascending ? result : -result;
+
+      final familyA = families['${a['code']}']!, familyB = families['${b['code']}']!;
+      result = familyA.compareTo(familyB);
+      if (result != 0) return result;
+      result = shareClassRank(a).compareTo(shareClassRank(b));
+      if (result != 0) return result;
+      result = '${a['name']}'.compareTo('${b['name']}');
+      return result == 0 ? '${a['code']}'.compareTo('${b['code']}') : result;
+    });
 
     return Stack(children: [
       ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
@@ -231,6 +276,24 @@ class _QuotaPageState extends State<QuotaPage> {
         ),
       ),
       const SizedBox(width: 8),
+      Material(
+        color: excludeC ? scheme.primaryContainer : fill,
+        borderRadius: BorderRadius.circular(r),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(r),
+          onTap: () => setState(() => excludeC = !excludeC),
+          child: Container(
+            height: h,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            alignment: Alignment.center,
+            child: Text('排除C', style: theme.textTheme.labelMedium?.copyWith(
+              color: excludeC ? scheme.onPrimaryContainer : iconColor,
+              fontWeight: excludeC ? FontWeight.w600 : FontWeight.normal,
+            )),
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
       PopupMenuButton<String>(
         tooltip: '排序方式',
         initialValue: sort,
@@ -298,9 +361,9 @@ class _QuotaPageState extends State<QuotaPage> {
               ),
               const SizedBox(width: 12),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                _channelLine(theme, scheme, '代销', channel(q, 'distribution'), highlight: sort == 'distributionLimit'),
+                _channelLine(theme, scheme, '代销', channel(q, 'distribution'), highlight: _highlightChannel(q, 'distribution')),
                 const SizedBox(height: 2),
-                _channelLine(theme, scheme, '直销', channel(q, 'direct'), highlight: sort == 'directLimit'),
+                _channelLine(theme, scheme, '直销', channel(q, 'direct'), highlight: _highlightChannel(q, 'direct')),
                 const SizedBox(height: 4),
                 Text('费率 ${_feeRateText(q)}', style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
               ]),

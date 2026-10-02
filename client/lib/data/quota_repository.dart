@@ -40,6 +40,45 @@ String? quotaCategory(String name) {
 
 bool quotaCandidate(Quota fund) => quotaCategory('${fund['name']}') != null && LocalFundCatalogRepository.supported(fund);
 
+const _quotaCurrencyTokens = ['美元现汇', '美元现钞', '人民币', '美元', '港币', '港元', '美钞', '美汇', '现汇', '现钞'];
+
+String _stripQuotaCurrencySuffix(String name) {
+  var current = name.trim();
+  while (true) {
+    var next = current;
+    for (final token in _quotaCurrencyTokens) {
+      for (final wrapped in ['($token)', '（$token）']) {
+        if (next.endsWith(wrapped)) next = next.substring(0, next.length - wrapped.length).trim();
+      }
+      if (next.endsWith(token)) next = next.substring(0, next.length - token.length).trim();
+    }
+    if (next == current) return current;
+    current = next;
+  }
+}
+
+/// Returns the trailing share-class letter (A, C, D, I ...) of a fund name,
+/// or null when the name carries no lettered share class. Currency markers
+/// such as 人民币/美元/美钞 and trailing parentheses are ignored, so both
+/// `...(QDII)A` and `...人民币A` resolve to `A`. A letter that belongs to a
+/// Latin abbreviation (ETF, LOF, QDII) is never treated as a share class.
+String? quotaShareClass(String name) {
+  final stripped = _stripQuotaCurrencySuffix(name);
+  if (stripped.isEmpty) return null;
+  final last = stripped.codeUnitAt(stripped.length - 1);
+  if (last < 0x41 || last > 0x5A) return null;
+  if (stripped.length > 1 && RegExp(r'[A-Za-z]').hasMatch(stripped[stripped.length - 2])) return null;
+  return String.fromCharCode(last);
+}
+
+/// Returns the fund family name shared by all share classes of the same
+/// fund, so that e.g. 招商纳斯达克…A and …C sort next to each other.
+String quotaFamilyName(String name) {
+  final stripped = _stripQuotaCurrencySuffix(name);
+  if (quotaShareClass(name) == null) return stripped;
+  return _stripQuotaCurrencySuffix(stripped.substring(0, stripped.length - 1));
+}
+
 String quotaStatus(String raw) {
   if (raw.contains('暂停') || raw.contains('不开放')) return '暂停申购';
   if (raw.contains('限')) return '限大额';

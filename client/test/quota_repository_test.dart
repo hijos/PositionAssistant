@@ -14,6 +14,35 @@ void main() {
     expect(quotaCandidate({'name': '标普500 ETF', 'type': '指数型'}), isFalse);
   });
 
+  test('extracts share class letters across catalog naming patterns', () {
+    expect(quotaShareClass('招商纳斯达克100ETF发起式联接(QDII)A'), 'A');
+    expect(quotaShareClass('招商纳斯达克100ETF发起式联接(QDII)C'), 'C');
+    expect(quotaShareClass('华泰柏瑞纳斯达克100ETF发起式联接(QDII)I'), 'I');
+    expect(quotaShareClass('大成标普500等权重指数(QDII)C人民币'), 'C');
+    expect(quotaShareClass('摩根标普500指数(QDII)人民币A'), 'A');
+    expect(quotaShareClass('华夏标普500ETF发起式联接(QDII)A(人民币)'), 'A');
+    expect(quotaShareClass('易方达纳斯达克100ETF联接(QDII-LOF)C(人民币)'), 'C');
+    expect(quotaShareClass('广发纳指100ETF联接(QDII)人民币F'), 'F');
+    expect(quotaShareClass('国泰纳斯达克100指数'), isNull);
+    expect(quotaShareClass('摩根标普500指数(QDII)美钞'), isNull);
+    expect(quotaShareClass('摩根标普500指数(QDII)美汇'), isNull);
+    // Letters inside Latin abbreviations are not share classes.
+    expect(quotaShareClass('华夏标普500ETF联接(QDII)'), isNull);
+    expect(quotaShareClass('某纳斯达克100ETF'), isNull);
+  });
+
+  test('groups share classes of one fund under the same family name', () {
+    expect(quotaFamilyName('招商纳斯达克100ETF发起式联接(QDII)A'), quotaFamilyName('招商纳斯达克100ETF发起式联接(QDII)C'));
+    expect(quotaFamilyName('华夏标普500ETF发起式联接(QDII)A(人民币)'), quotaFamilyName('华夏标普500ETF发起式联接(QDII)C'));
+    expect(quotaFamilyName('摩根标普500指数(QDII)人民币A'), quotaFamilyName('摩根标普500指数(QDII)人民币C'));
+    expect(quotaFamilyName('摩根标普500指数(QDII)人民币A'), quotaFamilyName('摩根标普500指数(QDII)美钞'));
+    expect(quotaFamilyName('易方达标普500指数人民币A'), quotaFamilyName('易方达标普500指数人民币C'));
+    expect(quotaFamilyName('大成标普500等权重指数(QDII)A人民币'), '大成标普500等权重指数(QDII)');
+    expect(quotaFamilyName('国泰纳斯达克100指数'), '国泰纳斯达克100指数');
+    // Different fund products stay in different families.
+    expect(quotaFamilyName('广发纳指100ETF联接(QDII)人民币F'), isNot(quotaFamilyName('广发纳斯达克100ETF联接人民币(QDII)A')));
+  });
+
   test('parses status, amount, return and source fields', () {
     final result = EastmoneyQuotaSource.parse('''
       <div>交易状态：<span>限大额</span></div>
