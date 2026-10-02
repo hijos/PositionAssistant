@@ -371,7 +371,7 @@ function createQuotaServiceApp(options = {}) {
   });
   app.get('/api/admin/corrections', requireAdmin, (req, res) => res.json({
     settings: { ...db.settings },
-    items: db.corrections.map(record => ({ ...clone(record), voterHash: undefined, summary: summaryFor(db, record.code, record.channel, clock()) })),
+    items: db.corrections.map(record => ({ ...clone(record), voterHash: undefined, summary: summaryFor(db, record.code, record.channel, clock) })),
   }));
   app.get('/api/admin/audit', requireAdmin, (req, res) => res.json({ items: db.audit.map(clone) }));
   app.post('/api/admin/corrections/:id/revoke', requireAdmin, (req, res) => {
