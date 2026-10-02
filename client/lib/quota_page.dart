@@ -244,15 +244,25 @@ class _QuotaPageState extends State<QuotaPage> {
           actions: [
             Row(
               children: [
-                Expanded(
+                SizedBox(
+                  width: 64,
                   child: TextButton(
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('取消'),
+                    child: const Text('取消', maxLines: 1),
                   ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(
+                SizedBox(
+                  width: 80,
                   child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
                     onPressed: () => Navigator.pop(context, {
                       'upload': false,
                       'fields': {
@@ -263,12 +273,16 @@ class _QuotaPageState extends State<QuotaPage> {
                             : null,
                       },
                     }),
-                    child: const Text('保存'),
+                    child: const Text('保存', maxLines: 1),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
                     onPressed: () => Navigator.pop(context, {
                       'upload': true,
                       'fields': {
