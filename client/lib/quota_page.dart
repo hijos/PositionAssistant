@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'data/local_repository.dart';
 import 'data/quota_repository.dart';
+import 'data/repository.dart';
 
 // Fund names are stored in Chinese. Alphabetical sorting follows each
 // character's pinyin reading, mirroring the quota sub-service's zh-CN
@@ -86,9 +88,16 @@ class _QuotaPageState extends State<QuotaPage> {
   List<Quota> items = [];
   bool loading = true, busy = false, ascending = false, excludeC = false;
   String? error;
-  String category = '全部', query = '', sort = 'directLimit';
+  String query = '', sort = 'directLimit';
+  Set<String> selectedCategories = {'纳斯达克100', '标普500'};
+  final _queryController = TextEditingController();
+  Repository? _preferencesStorage;
+  Future<Repository>? _preferencesStorageOpening;
+  Future<void> _preferencesWrite = Future<void>.value();
 
-  static const categories = ['全部', '纳斯达克100', '标普500'];
+  static const categories = ['纳斯达克100', '标普500'];
+  static const _preferencesCollection = 'quotaPagePreferences';
+  static const _preferencesId = 'state';
   static const sortOptions = [
     ('directLimit', '按直销额度'),
     ('distributionLimit', '按代销额度'),
@@ -99,8 +108,92 @@ class _QuotaPageState extends State<QuotaPage> {
   @override
   void initState() {
     super.initState();
-    load();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _restorePreferences();
+    if (!mounted) return;
+    await load();
     if (widget.refreshToken > 0) _autoRefresh();
+  }
+
+  Future<Repository> _openPreferencesStorage() {
+    final existing = _preferencesStorage;
+    if (existing != null) return Future.value(existing);
+    return _preferencesStorageOpening ??= openLocalRepository().then((storage) {
+      _preferencesStorage = storage;
+      return storage;
+    });
+  }
+
+  Future<void> _restorePreferences() async {
+    try {
+      final storage = await _openPreferencesStorage();
+      final saved = await storage.get(_preferencesCollection, _preferencesId);
+      if (!mounted || saved == null) return;
+      final rawCategories = saved['categories'];
+      final restoredCategories = rawCategories is List
+          ? rawCategories
+                .map((value) => '$value')
+                .where(categories.contains)
+                .toSet()
+          : <String>{};
+      final restoredQuery = '${saved['query'] ?? ''}';
+      final restoredSort = '${saved['sort'] ?? ''}';
+      final restoredAscending = saved['ascending'] == true;
+      final restoredExcludeC = saved['excludeC'] == true;
+      setState(() {
+        if (restoredCategories.isNotEmpty) {
+          selectedCategories = restoredCategories;
+        }
+        query = restoredQuery;
+        sort = sortOptions.any((option) => option.$1 == restoredSort)
+            ? restoredSort
+            : sort;
+        ascending = restoredAscending;
+        excludeC = restoredExcludeC;
+        _queryController.text = restoredQuery;
+        _queryController.selection = TextSelection.collapsed(
+          offset: restoredQuery.length,
+        );
+      });
+    } catch (_) {
+      // Local preferences are optional on non-Android platforms and in tests.
+    }
+  }
+
+  void _savePreferences() {
+    final snapshot = {
+      'categories': selectedCategories.toList(),
+      'query': query,
+      'sort': sort,
+      'ascending': ascending,
+      'excludeC': excludeC,
+    };
+    _preferencesWrite = _preferencesWrite.then((_) async {
+      try {
+        final storage = await _openPreferencesStorage();
+        await storage.put(_preferencesCollection, _preferencesId, snapshot);
+      } catch (_) {
+        // Local preferences are optional on non-Android platforms and in tests.
+      }
+    });
+  }
+
+  void _updatePreferences(VoidCallback update) {
+    setState(update);
+    _savePreferences();
+  }
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    final storage = _preferencesStorage;
+    if (storage != null) {
+      _preferencesWrite.whenComplete(storage.close);
+    }
+    super.dispose();
   }
 
   @override
@@ -420,7 +513,7 @@ class _QuotaPageState extends State<QuotaPage> {
     final filtered = items
         .where(
           (q) =>
-              (category == '全部' || q['category'] == category) &&
+              selectedCategories.contains('${q['category']}') &&
               (!excludeC || quotaShareClass('${q['name']}') != 'C') &&
               '${q['name']} ${q['code']}'.toLowerCase().contains(
                 query.toLowerCase(),
@@ -451,9 +544,8 @@ class _QuotaPageState extends State<QuotaPage> {
       }
       final classResult = shareClassRank(a).compareTo(shareClassRank(b));
       if (classResult != 0) return classResult;
-      final nameResult = _pinyinSortKey(
-        '${a['name']}',
-      ).compareTo(_pinyinSortKey('${b['name']}'));
+      final nameResult = _pinyinSortKey('${a['name']}')
+          .compareTo(_pinyinSortKey('${b['name']}'));
       return nameResult == 0
           ? '${a['code']}'.compareTo('${b['code']}')
           : nameResult;
@@ -511,28 +603,40 @@ class _QuotaPageState extends State<QuotaPage> {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: ChoiceChip(
-                label: Text(c == '全部' ? c : '${c} · ${countOf(c)}只'),
-                selected: category == c,
+                label: Text('${c} · ${countOf(c)}只'),
+                selected: selectedCategories.contains(c),
                 showCheckmark: false,
                 selectedColor: scheme.primaryContainer,
                 labelStyle: TextStyle(
                   fontSize: 14,
-                  color: category == c
+                  color: selectedCategories.contains(c)
                       ? scheme.onPrimaryContainer
                       : scheme.onSurfaceVariant,
-                  fontWeight: category == c
+                  fontWeight: selectedCategories.contains(c)
                       ? FontWeight.w600
                       : FontWeight.normal,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                   side: BorderSide(
-                    color: category == c
+                    color: selectedCategories.contains(c)
                         ? Colors.transparent
                         : scheme.outlineVariant,
                   ),
                 ),
-                onSelected: (_) => setState(() => category = c),
+                onSelected: (_) {
+                  if (selectedCategories.contains(c) &&
+                      selectedCategories.length == 1) {
+                    return;
+                  }
+                  _updatePreferences(() {
+                    if (selectedCategories.contains(c)) {
+                      selectedCategories = {...selectedCategories}..remove(c);
+                    } else {
+                      selectedCategories = {...selectedCategories, c};
+                    }
+                  });
+                },
               ),
             ),
         ],
@@ -573,7 +677,8 @@ class _QuotaPageState extends State<QuotaPage> {
               ),
               style: theme.textTheme.bodyMedium,
               textAlignVertical: TextAlignVertical.center,
-              onChanged: (value) => setState(() => query = value),
+              controller: _queryController,
+              onChanged: (value) => _updatePreferences(() => query = value),
             ),
           ),
         ),
@@ -583,7 +688,7 @@ class _QuotaPageState extends State<QuotaPage> {
           borderRadius: BorderRadius.circular(r),
           child: InkWell(
             borderRadius: BorderRadius.circular(r),
-            onTap: () => setState(() => excludeC = !excludeC),
+            onTap: () => _updatePreferences(() => excludeC = !excludeC),
             child: Container(
               height: h,
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -602,7 +707,7 @@ class _QuotaPageState extends State<QuotaPage> {
         PopupMenuButton<String>(
           tooltip: '排序方式',
           initialValue: sort,
-          onSelected: (value) => setState(() => sort = value),
+          onSelected: (value) => _updatePreferences(() => sort = value),
           itemBuilder: (context) => [
             for (final option in sortOptions)
               PopupMenuItem(value: option.$1, child: Text(option.$2)),
@@ -635,7 +740,7 @@ class _QuotaPageState extends State<QuotaPage> {
           borderRadius: BorderRadius.circular(r),
           child: InkWell(
             borderRadius: BorderRadius.circular(r),
-            onTap: () => setState(() => ascending = !ascending),
+            onTap: () => _updatePreferences(() => ascending = !ascending),
             child: SizedBox(
               height: h,
               width: h,
