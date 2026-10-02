@@ -13,14 +13,21 @@ description: 为 PositionAssistant（持仓助手）项目打包最新 Android A
 
 1. 确认当前目录为仓库根（`C:\Users\ms-ml\.ccgui\workspace\PositionAssistant`）。不要 `flutter clean`——会浪费数分钟重建 Gradle 缓存；增量构建即可，Flutter 会自动包含最新代码。
 
-2. 执行 release 构建（在 `client/` 下）：
+2. **必须使用仓库根目录的 `scripts\build-apk.bat` 打包**，不要直接在 `client/` 下调用 `flutter build apk`。该脚本会注入 `QUOTA_SERVICE_URL`（当前为 `http://192.168.31.143:4100`），否则 APK 可能回退到手机上的 `127.0.0.1:4100`，导致无法访问电脑上的额度服务。
+
+   在项目根目录执行：
 
    ```powershell
-   cd client
-   & ..\.tooling\flutter\bin\flutter.bat build apk --release
+   .\scripts\build-apk.bat
    ```
 
-   首次或依赖变更时若构建异常，先跑 `..\.tooling\flutter\bin\flutter.bat pub get` 再重试。
+   用户明确要求 debug 包时执行：
+
+   ```powershell
+   .\scripts\build-apk.bat debug
+   ```
+
+   首次或依赖变更时若脚本构建异常，先在 `client/` 下运行 `..\.tooling\flutter\bin\flutter.bat pub get`，再从项目根目录重新执行脚本。
 
 3. 构建会产生两份相同内容的 APK（Flutter 工具行为：`build/app/outputs/flutter-apk/` 是从 Gradle 输出 `build/app/outputs/apk/release/` 复制来的）。**只保留一份**：先删除旧的 `持仓助手.apk`，再把 Gradle 输出移动重命名过去：
 
