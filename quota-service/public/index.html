@@ -19,6 +19,9 @@
     .error { color: #a83b35; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { text-align: left; border-bottom: 1px solid #e5eeeb; padding: 9px 6px; vertical-align: top; }
+    .table-sort { padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font-weight: 700; }
+    .table-sort:hover { color: #087f6a; }
+    .sort-indicator { display: inline-block; width: 1em; color: #087f6a; }
     .scroll { overflow-x: auto; }
     .hidden { display: none; }
     .autocomplete { position: relative; }
@@ -64,7 +67,7 @@
         <button>保存额度</button>
       </form>
       <p id="quotaMessage" class="muted"></p>
-      <div class="scroll"><table><thead><tr><th>代码</th><th>名称</th><th>分类</th><th>代销</th><th>直销</th><th>费率</th><th>来源/时间</th><th>操作</th></tr></thead><tbody id="quotaRows"></tbody></table></div>
+      <div class="scroll"><table><thead><tr><th><button type="button" class="table-sort" data-sort="code">代码 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="name">名称 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="category">分类 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="distribution">代销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="direct">直销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="feeRate">费率 <span class="sort-indicator"></span></button></th><th>来源/时间</th><th>操作</th></tr></thead><tbody id="quotaRows"></tbody></table></div>
     </div>
     <div class="card"><strong>用户纠错建议</strong><div class="scroll"><table><thead><tr><th>时间</th><th>基金/渠道</th><th>建议</th><th>当前进度</th><th>状态</th></tr></thead><tbody id="correctionRows"></tbody></table></div></div>
     <div class="card"><strong>更新审计与撤销</strong><div class="scroll"><table><thead><tr><th>时间</th><th>类型</th><th>基金/渠道</th><th>说明</th><th>操作</th></tr></thead><tbody id="auditRows"></tbody></table></div></div>
@@ -73,11 +76,35 @@
 <script>
 let token = sessionStorage.getItem('quotaAdminToken') || '';
 let fundCatalog = [];
+let quotaItems = [];
+let quotaSort = { key: null, direction: 1 };
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const json = async (url, options = {}) => { const response = await fetch(url, { ...options, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.headers || {}) } }); const body = await response.json().catch(() => ({})); if (!response.ok) throw Error(body.error || `HTTP ${response.status}`); return body; };
 const channelText = (item, key) => { const c = item.channels?.[key]; if (!c) return '-'; if (c.status === '限大额') return esc(c.limit == null ? '-' : c.limit); return esc(c.status || '-'); };
 const feeText = item => { const value = item.feeRate; return value == null ? '-' : esc((value * 100).toFixed(2) + '%'); };
+const channelSortValue = (item, key) => { const channel = item.channels?.[key]; if (!channel) return -3; if (channel.status === '暂停申购') return -2; if (channel.status === '未知') return -1; if (channel.status === '开放申购') return Number.POSITIVE_INFINITY; const limit = Number(channel.limit); return Number.isFinite(limit) ? limit : -1; };
+const quotaSortValue = (item, key) => {
+  if (key === 'distribution' || key === 'direct') return channelSortValue(item, key);
+  if (key === 'feeRate') return item.feeRate == null ? Number.NEGATIVE_INFINITY : Number(item.feeRate);
+  return String(item[key] ?? '');
+};
+const compareQuotaItems = (a, b) => {
+  const left = quotaSortValue(a, quotaSort.key); const right = quotaSortValue(b, quotaSort.key);
+  let result;
+  if (typeof left === 'number' && typeof right === 'number') result = left - right;
+  else result = String(left).localeCompare(String(right), 'zh-CN', { numeric: true, sensitivity: 'base' });
+  return (result || String(a.code).localeCompare(String(b.code), 'zh-CN', { numeric: true })) * quotaSort.direction;
+};
+const updateSortIndicators = () => document.querySelectorAll('[data-sort]').forEach(button => { const active = button.dataset.sort === quotaSort.key; button.querySelector('.sort-indicator').textContent = active ? (quotaSort.direction > 0 ? '▲' : '▼') : ''; button.setAttribute('aria-sort', active ? (quotaSort.direction > 0 ? 'ascending' : 'descending') : 'none'); });
+const fillQuotaForm = item => { const d = item.channels?.distribution || {}; const r = item.channels?.direct || {}; $('code').value = item.code; $('name').value = item.name; $('category').value = item.category; $('detail').value = item.detail || ''; $('statusDist').value = d.status || '限大额'; $('limitDist').value = d.limit ?? ''; $('statusDirect').value = r.status || '限大额'; $('limitDirect').value = r.limit ?? ''; $('feeRatePercent').value = item.feeRate == null ? '' : item.feeRate * 100; $('sourceUrl').value = d.sourceUrl || r.sourceUrl || ''; syncLimitInput(); $('quotaForm').scrollIntoView({ behavior: 'smooth' }); };
+const renderQuotaRows = () => {
+  const rows = quotaSort.key ? [...quotaItems].sort(compareQuotaItems) : quotaItems;
+  $('quotaRows').innerHTML = rows.map(item => `<tr><td>${esc(item.code)}</td><td>${esc(item.name)}</td><td>${esc(item.category)}</td><td>${channelText(item, 'distribution')}</td><td>${channelText(item, 'direct')}</td><td>${feeText(item)}</td><td>${esc(item.source || '-')}<br><span class="muted">${esc(item.updatedAt || '-')}</span></td><td><button class="secondary" data-edit="${esc(item.code)}">载入编辑</button></td></tr>`).join('');
+  document.querySelectorAll('[data-edit]').forEach(button => button.onclick = () => fillQuotaForm(quotaItems.find(item => item.code === button.dataset.edit)));
+  updateSortIndicators();
+};
+const setupQuotaSorting = () => document.querySelectorAll('[data-sort]').forEach(button => button.onclick = () => { const key = button.dataset.sort; quotaSort = quotaSort.key === key ? { key, direction: -quotaSort.direction } : { key, direction: 1 }; renderQuotaRows(); });
 const hideSuggestions = () => { $('codeSuggestions').classList.add('hidden'); $('nameSuggestions').classList.add('hidden'); };
 const chooseFund = item => { $('code').value = item.code; $('name').value = item.name; $('category').value = item.category; hideSuggestions(); };
 const showSuggestions = (input, target) => {
@@ -99,12 +126,11 @@ async function load() {
   const [quotas, settings, corrections, audit, catalog] = await Promise.all([json('/api/admin/quotas'), json('/api/admin/settings'), json('/api/admin/corrections'), json('/api/admin/audit'), json('/api/admin/fund-catalog')]);
   fundCatalog = catalog.items || [];
   $('minSupport').value = settings.minSupport; $('agreementRatio').value = settings.agreementRatio; $('windowHours').value = settings.windowHours;
-  $('quotaRows').innerHTML = quotas.items.map(item => `<tr><td>${esc(item.code)}</td><td>${esc(item.name)}</td><td>${esc(item.category)}</td><td>${channelText(item, 'distribution')}</td><td>${channelText(item, 'direct')}</td><td>${feeText(item)}</td><td>${esc(item.source || '-')}<br><span class="muted">${esc(item.updatedAt || '-')}</span></td><td><button class="secondary" data-edit="${esc(item.code)}">载入编辑</button></td></tr>`).join('');
+  quotaItems = quotas.items || [];
+  renderQuotaRows();
   $('correctionRows').innerHTML = corrections.items.slice(0, 100).map(item => { const s = item.summary; const winner = s?.winner; return `<tr><td>${esc(item.createdAt)}</td><td>${esc(item.code)}/${esc(channelLabel(item.channel))}</td><td>${esc(item.fields.status)} ${esc(item.fields.limit == null ? '-' : item.fields.limit)}</td><td>${winner ? `${esc(winner.support)}/${esc(winner.total)}（${esc((winner.ratio * 100).toFixed(0))}%）` : '-'}</td><td>${esc(item.status)}</td></tr>`; }).join('');
   $('auditRows').innerHTML = audit.items.slice(0, 100).map(item => `<tr><td>${esc(item.createdAt)}</td><td>${esc(item.type)}</td><td>${esc(item.code)}/${esc(Array.isArray(item.channels) ? item.channels.map(channelLabel).join('+') : channelLabel(item.channel))}</td><td>版本 ${esc(item.afterRevision || '-')}</td><td>${item.type === 'consensus-applied' ? `<button class="danger" data-revoke="${esc(item.id)}">撤销</button>` : ''}</td></tr>`).join('');
-  const fillChannel = item => { const d = item.channels?.distribution || {}; const r = item.channels?.direct || {}; $('statusDist').value = d.status || '限大额'; $('limitDist').value = d.limit ?? ''; $('statusDirect').value = r.status || '限大额'; $('limitDirect').value = r.limit ?? ''; $('feeRatePercent').value = item.feeRate == null ? '' : item.feeRate * 100; $('sourceUrl').value = d.sourceUrl || r.sourceUrl || ''; syncLimitInput(); };
   $('statusDist').onchange = $('statusDirect').onchange = syncLimitInput;
-  document.querySelectorAll('[data-edit]').forEach(button => button.onclick = () => { const item = quotas.items.find(x => x.code === button.dataset.edit); $('code').value = item.code; $('name').value = item.name; $('category').value = item.category; $('detail').value = item.detail || ''; fillChannel(item); $('quotaForm').scrollIntoView({ behavior: 'smooth' }); });
   document.querySelectorAll('[data-revoke]').forEach(button => button.onclick = async () => { if (!confirm('确认撤销这次用户共识覆盖？')) return; try { await json(`/api/admin/corrections/${button.dataset.revoke}/revoke`, { method: 'POST', body: '{}' }); await load(); } catch (error) { alert(error.message); } });
 }
 $('loginForm').onsubmit = async event => { event.preventDefault(); try { const body = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: $('password').value }) }).then(async response => { const value = await response.json(); if (!response.ok) throw Error(value.error); return value; }); token = body.token; sessionStorage.setItem('quotaAdminToken', token); $('login').classList.add('hidden'); $('app').classList.remove('hidden'); await load(); } catch (error) { $('loginError').textContent = error.message; } };
@@ -114,6 +140,7 @@ $('quotaForm').onsubmit = async event => { event.preventDefault(); try { await j
 $('reload').onclick = () => load().catch(error => alert(error.message)); $('logout').onclick = () => { token = ''; sessionStorage.removeItem('quotaAdminToken'); location.reload(); };
 if (token) { $('login').classList.add('hidden'); $('app').classList.remove('hidden'); load().catch(() => { token = ''; sessionStorage.removeItem('quotaAdminToken'); location.reload(); }); }
 setupAutocomplete();
+setupQuotaSorting();
 </script>
 </body>
 </html>

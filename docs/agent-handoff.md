@@ -896,3 +896,11 @@
 - 验证：`node --check quota-service/index.js`；`node --test test/quota-service.test.js`（3 项通过），覆盖 A/C 相邻、目录完整性和典型代码名称映射。
 - 未覆盖：额度子服务仍使用静态目录快照，目录更新后需重启服务加载。
 - 更新时间：2026-10-02。
+
+### 用户追加：额度管理表格指标排序
+
+- 状态：done
+- 修改文件：`quota-service/public/index.html`、`docs/agent-handoff.md`。
+- 已实现：管理页额度表格的代码、名称、分类、代销、直销、费率表头均可点击排序，再次点击切换升降序；代销/直销按状态和额度数值排序，名称排序按基金族归组，额度排序保持独立。
+- 验证：内嵌脚本 `node --check` 通过；`npm run test:quota-service`（3 项通过）。
+- 更新时间：2026-10-02。
