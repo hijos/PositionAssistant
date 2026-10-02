@@ -1,32 +1,30 @@
-# 持仓助手 Flutter 前端
+# 持仓助手 Flutter 客户端
 
-F02 仅包含 Android/Web 共用入口、卡片布局、底部导航和页面占位。
-业务操作尚未接入；收益显示为无数据，不使用虚构金额。
+客户端位于 `client/`，共用 Android/Web 代码，支持本地 SQLite 模式和访问 Express 的远端模式。持仓、交易、定投、额度、导入导出等业务入口已经接入；不要再把本目录描述为“只有页面占位”。早期 Express/Web 原型位于上级 `server/` 与 `web/`，不作为 Flutter 本地模式的存储依赖。
 
-在本目录执行（需要 stable Flutter SDK、Android SDK 和 JDK）：
+仓库自带 Flutter SDK，常用命令如下：
 
-```sh
-flutter pub get
-flutter analyze
-flutter test
-flutter run -d chrome
-flutter run -d <android-device-id>
-flutter build web
-flutter build apk --debug
+```powershell
+..\.tooling\flutter\bin\flutter.bat pub get
+..\.tooling\flutter\bin\flutter.bat analyze
+..\.tooling\flutter\bin\flutter.bat test
+..\.tooling\flutter\bin\flutter.bat run -d chrome
+..\.tooling\flutter\bin\flutter.bat build web
 ```
 
-当前工作区的隔离 Flutter SDK 位于 `../.tooling/flutter`，不提交版本库。
-Android 默认本地、Web 使用远端的说明仅为界面占位；F05 已提供本地存储工厂，页面业务接入和模式切换由后续任务实现。
-原 Express 原型仍在上级 `web/` 和 `server/`，不作为本工程运行依赖。
+Android SDK 使用 `C:\lib`，配置见 `android/local.properties`。Android 模拟器访问本机主服务时通常使用 `http://10.0.2.2:3000`；正式环境通过 `API_BASE_URL` 注入 HTTPS 地址。额度服务地址通过 `QUOTA_SERVICE_URL` 注入。
 
-## F05 本地存储
+Android APK 必须从仓库根目录执行 `scripts\build-apk.bat`，包括 `debug` 和 `with-quota` 模式。不要使用 `flutter clean`；产物和验证步骤见 [`../docs/project-guide.md`](../docs/project-guide.md)。
 
-`lib/data/repository.dart` 定义平台无关 JSON 记录 CRUD 和事务接口；业务层依赖接口，通过构造参数注入，不直接操作 sqflite。远端适配器在后续接口任务实现，不能使用本地数据库冒充远端。
+## 本地数据边界
 
-Android 在 `WidgetsFlutterBinding.ensureInitialized()` 后按需调用 `openLocalRepository()`；数据库位于应用私有数据库目录 `position_assistant.db`。调用方持有并在不再使用时关闭 Repository。Web 调用该工厂会明确报错；当前占位 UI 尚无业务读取，因此不在 main 中创建无使用者的连接。
+Android 本地仓储使用应用私有 SQLite 数据库 `position_assistant.db`。业务 Repository 通过接口和事务会话访问存储，不应在事务回调内发起网络副作用。金额和份额使用十进制字符串，业务模型必须在 payload 中保留自己的 id。
 
-SQLite v1 以 `(collection, id)` 主键隔离记录，payload 保存 JSON 对象。`list` 按 id 排序、返回 payload；业务模型须在 payload 中保留自己的 id。金额和份额应使用十进制字符串，避免二进制浮点损失。此处只是基础存储边界，并非 F39 导出格式或最终业务 schema；具体类型、校验和表结构随后续任务建立。
+本地正式净值由 `lib/data/nav_repository.dart` 直接请求东方财富历史净值接口，并写入 `navSnapshots`；请求失败时保留缓存，交易不得被错误地标记为已确认。Web 不使用 SQLite 工厂，远端数据必须通过服务端接口获取。
 
-事务回调只使用传入的 `RepositorySession`，异常自动回滚；不要在回调内调用外部 Repository 或执行网络副作用。未来 schema 变更增加数据库版本和升级逻辑；不允许旧版本应用降级删除数据。
+相关测试：
 
-`flutter test test/repository_test.dart` 使用 sqflite FFI 和真实 SQLite 临时文件，覆盖关闭重开持久化、集合隔离、CRUD、事务提交/回滚及无效输入。Android 插件真机运行仍需设备验收。
+```powershell
+..\.tooling\flutter\bin\flutter.bat test test/repository_test.dart
+..\.tooling\flutter\bin\flutter.bat analyze
+```

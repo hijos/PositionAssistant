@@ -3,7 +3,7 @@ const { readMigrations, migrate } = require('../server/db/migrate');
 
 async function main() {
   if (!process.env.DATABASE_URL && !process.env.POSTGRES_PASSWORD) {
-    throw new Error('Set DATABASE_URL or POSTGRES_PASSWORD (see docs/development.md)');
+    throw new Error('Set DATABASE_URL or POSTGRES_PASSWORD (see docs/project-guide.md)');
   }
   const client = new Client(process.env.DATABASE_URL ? { connectionString: process.env.DATABASE_URL } : {
     host: process.env.POSTGRES_HOST || '127.0.0.1',
@@ -23,6 +23,6 @@ async function main() {
 }
 main().catch(() => {
   // Avoid printing connection strings or credentials from driver errors.
-  console.error('Migration failed. Check database connectivity and migration history; see docs/development.md.');
+  console.error('Migration failed. Check database connectivity and migration history; see docs/project-guide.md.');
   process.exitCode = 1;
 });
