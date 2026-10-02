@@ -22,6 +22,8 @@
     .table-sort { padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font-weight: 700; }
     .table-sort:hover { color: #087f6a; }
     .sort-indicator { display: inline-block; width: 1em; color: #087f6a; }
+    .filter-button { background: white; color: #087f6a; }
+    .filter-button.active { background: #087f6a; color: white; }
     .scroll { overflow-x: auto; }
     .hidden { display: none; }
     .autocomplete { position: relative; }
@@ -53,6 +55,12 @@
     <div class="card">
       <div class="row"><strong>额度与费率</strong><button id="reload" class="secondary">刷新</button><button id="logout" class="secondary">退出</button></div>
       <p class="muted">第一版只支持管理员手工录入，不执行任何上游爬取。</p>
+      <div class="row" aria-label="基金筛选">
+        <strong>筛选：</strong>
+        <button type="button" class="filter-button active" data-category-filter="纳斯达克100" aria-pressed="true">纳指100</button>
+        <button type="button" class="filter-button active" data-category-filter="标普500" aria-pressed="true">标普500</button>
+        <button type="button" class="filter-button" id="excludeC" aria-pressed="false">排除C</button>
+      </div>
       <form id="quotaForm">
         <div class="autocomplete"><input id="code" pattern="\d{6}" placeholder="基金代码" autocomplete="off" required><div id="codeSuggestions" class="suggestions hidden"></div></div>
         <div class="autocomplete"><input id="name" placeholder="基金名称" autocomplete="off" required><div id="nameSuggestions" class="suggestions hidden"></div></div>
@@ -67,7 +75,7 @@
         <button>保存额度</button>
       </form>
       <p id="quotaMessage" class="muted"></p>
-      <div class="scroll"><table><thead><tr><th><button type="button" class="table-sort" data-sort="code">代码 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="name">名称 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="category">分类 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="distribution">代销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="direct">直销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="feeRate">费率 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="updatedAt">来源/录入时间 <span class="sort-indicator"></span></button></th><th>操作</th></tr></thead><tbody id="quotaRows"></tbody></table></div>
+      <div class="scroll"><table><thead><tr><th><button type="button" class="table-sort" data-sort="code">代码 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="name">名称 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="category">分类 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="maxLimit">最大额度 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="distribution">代销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="direct">直销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="feeRate">费率 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="updatedAt">来源/录入时间 <span class="sort-indicator"></span></button></th><th>操作</th></tr></thead><tbody id="quotaRows"></tbody></table></div>
     </div>
     <div class="card"><strong>用户纠错建议</strong><div class="scroll"><table><thead><tr><th>时间</th><th>基金/渠道</th><th>建议</th><th>当前进度</th><th>状态</th></tr></thead><tbody id="correctionRows"></tbody></table></div></div>
     <div class="card"><strong>更新审计与撤销</strong><div class="scroll"><table><thead><tr><th>时间</th><th>类型</th><th>基金/渠道</th><th>说明</th><th>操作</th></tr></thead><tbody id="auditRows"></tbody></table></div></div>
@@ -77,15 +85,22 @@
 let token = sessionStorage.getItem('quotaAdminToken') || '';
 let fundCatalog = [];
 let quotaItems = [];
-let quotaSort = { key: null, direction: 1 };
+let quotaSort = { key: 'name', direction: 1 };
+const quotaFilters = { categories: new Set(['纳斯达克100', '标普500']), excludeC: false };
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const json = async (url, options = {}) => { const response = await fetch(url, { ...options, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.headers || {}) } }); const body = await response.json().catch(() => ({})); if (!response.ok) throw Error(body.error || `HTTP ${response.status}`); return body; };
 const channelText = (item, key) => { const c = item.channels?.[key]; if (!c) return '-'; if (c.status === '限大额') return esc(c.limit == null ? '-' : c.limit); return esc(c.status || '-'); };
 const feeText = item => { const value = item.feeRate; return value == null ? '-' : esc((value * 100).toFixed(2) + '%'); };
-const channelSortValue = (item, key) => { const channel = item.channels?.[key]; if (!channel) return -3; if (channel.status === '暂停申购') return -2; if (channel.status === '未知') return -1; if (channel.status === '开放申购') return Number.POSITIVE_INFINITY; const limit = Number(channel.limit); return Number.isFinite(limit) ? limit : -1; };
+const channelSortValue = (item, key) => { const channel = item.channels?.[key]; if (!channel) return -3; if (channel.status === '暂停申购') return -2; if (channel.status === '未知') return -1; if (channel.status === '开放申购') return Number.POSITIVE_INFINITY; if (channel.limit == null || String(channel.limit).trim() === '') return -1; const limit = Number(channel.limit); return Number.isFinite(limit) ? limit : -1; };
+const fundFamilyKey = item => String(item.name || '').replace(/\(人民币\)/g, '').replace(/人民币/g, '').replace(/[ACDEFI]$/, '');
+const fundShareClass = item => { const normalized = String(item.name || '').replace(/\(人民币\)/g, '').replace(/人民币/g, ''); const match = normalized.match(/([ACDEFI])$/); return match ? match[1] : ''; };
+const fundShareClassRank = item => ({ A: 0, C: 1, D: 2, E: 3, F: 4, I: 5 })[fundShareClass(item)] ?? 9;
+const maxChannelSortValue = item => Math.max(channelSortValue(item, 'distribution'), channelSortValue(item, 'direct'));
+const maxChannelText = item => { const value = maxChannelSortValue(item); if (value === Number.POSITIVE_INFINITY) return '开放申购'; if (value === -3) return '-'; if (value === -2) return '暂停申购'; if (value === -1) return '未知'; return esc(value); };
 const quotaSortValue = (item, key) => {
   if (key === 'distribution' || key === 'direct') return channelSortValue(item, key);
+  if (key === 'maxLimit') return maxChannelSortValue(item);
   if (key === 'feeRate') return item.feeRate == null ? Number.NEGATIVE_INFINITY : Number(item.feeRate);
   if (key === 'updatedAt') { const timestamp = Date.parse(item.updatedAt || ''); return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY; }
   return String(item[key] ?? '');
@@ -95,17 +110,45 @@ const compareQuotaItems = (a, b) => {
   let result;
   if (typeof left === 'number' && typeof right === 'number') result = left - right;
   else result = String(left).localeCompare(String(right), 'zh-CN', { numeric: true, sensitivity: 'base' });
-  return (result || String(a.code).localeCompare(String(b.code), 'zh-CN', { numeric: true })) * quotaSort.direction;
+  if (result) return result * quotaSort.direction;
+  if (['distribution', 'direct', 'maxLimit'].includes(quotaSort.key)) {
+    result = fundFamilyKey(a).localeCompare(fundFamilyKey(b), 'zh-CN', { sensitivity: 'base' });
+    if (result) return result;
+    result = fundShareClassRank(a) - fundShareClassRank(b);
+    if (result) return result;
+  }
+  return String(a.code).localeCompare(String(b.code), 'zh-CN', { numeric: true });
 };
 const updateSortIndicators = () => document.querySelectorAll('[data-sort]').forEach(button => { const active = button.dataset.sort === quotaSort.key; button.querySelector('.sort-indicator').textContent = active ? (quotaSort.direction > 0 ? '▲' : '▼') : ''; button.setAttribute('aria-sort', active ? (quotaSort.direction > 0 ? 'ascending' : 'descending') : 'none'); });
 const fillQuotaForm = item => { const d = item.channels?.distribution || {}; const r = item.channels?.direct || {}; $('code').value = item.code; $('name').value = item.name; $('category').value = item.category; $('detail').value = item.detail || ''; $('statusDist').value = d.status || '限大额'; $('limitDist').value = d.limit ?? ''; $('statusDirect').value = r.status || '限大额'; $('limitDirect').value = r.limit ?? ''; $('feeRatePercent').value = item.feeRate == null ? '' : item.feeRate * 100; $('sourceUrl').value = d.sourceUrl || r.sourceUrl || ''; syncLimitInput(); $('quotaForm').scrollIntoView({ behavior: 'smooth' }); };
 const renderQuotaRows = () => {
-  const rows = quotaSort.key ? [...quotaItems].sort(compareQuotaItems) : quotaItems;
-  $('quotaRows').innerHTML = rows.map(item => `<tr><td>${esc(item.code)}</td><td>${esc(item.name)}</td><td>${esc(item.category)}</td><td>${channelText(item, 'distribution')}</td><td>${channelText(item, 'direct')}</td><td>${feeText(item)}</td><td>${esc(item.source || '-')}<br><span class="muted">${esc(item.updatedAt || '-')}</span></td><td><button class="secondary" data-edit="${esc(item.code)}">载入编辑</button></td></tr>`).join('');
+  const bothCategories = quotaFilters.categories.size === 2;
+  const rows = quotaItems.filter(item => (bothCategories || quotaFilters.categories.has(item.category)) && (!quotaFilters.excludeC || fundShareClass(item) !== 'C'));
+  rows.sort(compareQuotaItems);
+  $('quotaRows').innerHTML = rows.map(item => `<tr><td>${esc(item.code)}</td><td>${esc(item.name)}</td><td>${esc(item.category)}</td><td>${maxChannelText(item)}</td><td>${channelText(item, 'distribution')}</td><td>${channelText(item, 'direct')}</td><td>${feeText(item)}</td><td>${esc(item.source || '-')}<br><span class="muted">${esc(item.updatedAt || '-')}</span></td><td><button class="secondary" data-edit="${esc(item.code)}">载入编辑</button></td></tr>`).join('');
   document.querySelectorAll('[data-edit]').forEach(button => button.onclick = () => fillQuotaForm(quotaItems.find(item => item.code === button.dataset.edit)));
   updateSortIndicators();
 };
 const setupQuotaSorting = () => document.querySelectorAll('[data-sort]').forEach(button => button.onclick = () => { const key = button.dataset.sort; quotaSort = quotaSort.key === key ? { key, direction: -quotaSort.direction } : { key, direction: 1 }; renderQuotaRows(); });
+const setupQuotaFilters = () => {
+  document.querySelectorAll('[data-category-filter]').forEach(button => button.onclick = () => {
+    const category = button.dataset.categoryFilter;
+    if (quotaFilters.categories.size === 1 && quotaFilters.categories.has(category)) {
+      quotaFilters.categories = new Set(['纳斯达克100', '标普500']);
+    } else if (quotaFilters.categories.has(category)) {
+      quotaFilters.categories.delete(category);
+    } else {
+      quotaFilters.categories.add(category);
+    }
+    updateQuotaFilterButtons();
+    renderQuotaRows();
+  });
+  $('excludeC').onclick = () => { quotaFilters.excludeC = !quotaFilters.excludeC; updateQuotaFilterButtons(); renderQuotaRows(); };
+};
+const updateQuotaFilterButtons = () => {
+  document.querySelectorAll('[data-category-filter]').forEach(button => { const active = quotaFilters.categories.has(button.dataset.categoryFilter); button.classList.toggle('active', active); button.setAttribute('aria-pressed', active ? 'true' : 'false'); });
+  $('excludeC').classList.toggle('active', quotaFilters.excludeC); $('excludeC').setAttribute('aria-pressed', quotaFilters.excludeC ? 'true' : 'false');
+};
 const hideSuggestions = () => { $('codeSuggestions').classList.add('hidden'); $('nameSuggestions').classList.add('hidden'); };
 const chooseFund = item => { $('code').value = item.code; $('name').value = item.name; $('category').value = item.category; hideSuggestions(); };
 const showSuggestions = (input, target) => {
@@ -142,6 +185,8 @@ $('reload').onclick = () => load().catch(error => alert(error.message)); $('logo
 if (token) { $('login').classList.add('hidden'); $('app').classList.remove('hidden'); load().catch(() => { token = ''; sessionStorage.removeItem('quotaAdminToken'); location.reload(); }); }
 setupAutocomplete();
 setupQuotaSorting();
+setupQuotaFilters();
+updateQuotaFilterButtons();
 </script>
 </body>
 </html>
