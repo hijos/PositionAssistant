@@ -643,6 +643,7 @@ class _QuotaPageState extends State<QuotaPage> {
   Widget _buildToolbar(ThemeData theme, ColorScheme scheme) {
     const double h = 40;
     const double r = 20;
+    const double sortWidth = 131;
     final fill = scheme.surfaceContainerHighest.withValues(alpha: 0.6);
     final iconColor = scheme.onSurfaceVariant;
 
@@ -704,16 +705,26 @@ class _QuotaPageState extends State<QuotaPage> {
           tooltip: '排序方式',
           initialValue: sort,
           padding: EdgeInsets.zero,
-          offset: const Offset(-18, 0),
+          constraints: const BoxConstraints.tightFor(width: sortWidth),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(r),
           ),
           onSelected: (value) => _updatePreferences(() => sort = value),
           itemBuilder: (context) => [
             for (final option in sortOptions)
-              PopupMenuItem(value: option.$1, child: Text(option.$2)),
+              PopupMenuItem(
+                value: option.$1,
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: Text(
+                  option.$2,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ),
           ],
           child: Container(
+            width: sortWidth,
             height: h,
             decoration: BoxDecoration(
               color: fill,
