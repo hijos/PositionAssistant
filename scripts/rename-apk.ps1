@@ -8,7 +8,7 @@ $src = Join-Path $root "client\build\app\outputs\apk\$Mode\app-$Mode.apk"
 if (-not (Test-Path $src)) { $src = Join-Path $outDir "app-$Mode.apk" }
 if (-not (Test-Path $src)) { Write-Error "build artifact not found"; exit 1 }
 $dst = Join-Path $outDir $Name
-foreach ($oldName in @($Name, "持仓助手.apk", "持仓助手-带额度.apk", "app-release.apk", "app-debug.apk") | Select-Object -Unique) {
+foreach ($oldName in @($Name, "app-release.apk", "app-debug.apk") | Select-Object -Unique) {
   $oldPath = Join-Path $outDir $oldName
   if ($oldPath -ne $src -and (Test-Path $oldPath)) { Remove-Item -LiteralPath $oldPath -Force }
 }

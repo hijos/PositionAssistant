@@ -39,6 +39,8 @@ description: 为 PositionAssistant（持仓助手）项目打包 Android APK。�
 
 3. 构建会产生两份相同内容的 APK（Flutter 工具行为：`build/app/outputs/flutter-apk/` 是从 Gradle 输出 `build/app/outputs/apk/release/` 复制来的）。**只保留一份**：先删除旧的目标 APK，再把 Gradle 输出移动重命名过去。普通 release/debug 包的目标名是 `持仓助手.apk`；`with-quota` 模式的目标名是 `持仓助手-带额度.apk`。
 
+   **两种命名产物必须共存**：构建 `持仓助手.apk` 时不得删除输出目录里已有的 `持仓助手-带额度.apk`；构建 `持仓助手-带额度.apk` 时同样不得删除已有的 `持仓助手.apk`。只清理与本次构建同名的旧目标和 Flutter 复制出的 `app-release.apk` / `app-debug.apk`。
+
    `scripts\build-apk.bat` 会调用 `scripts\rename-apk.ps1` 完成删除旧目标和移动重命名，不要手动复制 APK。
 
    最终产物：
@@ -56,6 +58,7 @@ description: 为 PositionAssistant（持仓助手）项目打包 Android APK。�
 ## 注意
 
 - 不要用 `Copy-Item` 再保留原名文件——用户明确要求不保留重复 APK 副本；用移动/重命名替代复制。
+- 两种产物在输出目录共存：`rename-apk.ps1` 只删除本次同名的旧目标及 `app-release.apk` / `app-debug.apk`，不会动另一种命名产物；不要改回全量清理，也不要手动删除另一种 APK。
 - 默认打 release 包；只有用户明确要求 debug 时才用 `--debug`。
 - 当前未配置正式签名，release APK 使用默认 debug 签名，可直接安装但不能上架。用户提到上架/正式分发时再引导配置 keystore。
 - 构建耗时约 1–3 分钟属正常；Gradle 报 daemon/JDK 相关错误时检查 Java 17 是否可用（`java -version`）。
