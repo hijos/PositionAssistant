@@ -26,6 +26,8 @@ The first version does not crawl any upstream site for quota status. The autocom
 - `GET/PUT /api/admin/settings`
 - `GET /api/admin/corrections`
 - `GET /api/admin/audit`
+- `POST /api/admin/corrections/:id/accept` — accept an active suggestion and overwrite the current channel value
+- `DELETE /api/admin/corrections/:id` — mark an active suggestion as deleted
 - `POST /api/admin/corrections/:id/revoke`
 
 Corrections are counted by a salted server-side hash of the client IP. The service applies a correction only when both the minimum support count and agreement ratio are met. The default is 3 sources, 80%, within 72 hours. The thresholds are editable in the management page.

@@ -142,7 +142,10 @@ function clientIp(req, trustProxy) {
   }
   return req.socket.remoteAddress || 'unknown';
 }
-function correctionFields(body) { return { status: normalizeStatus(body.status), limit: normalizeLimit(body.limit) }; }
+function correctionFields(body) {
+  const status = normalizeStatus(body.status);
+  return { status, limit: status === '开放申购' ? null : normalizeLimit(body.limit) };
+}
 function bump(db, item, at) { db.version += 1; item.revision = db.version; item.updatedAt = at; }
 
 function summaryFor(db, code, channel, clock) {
@@ -198,6 +201,8 @@ function applyConsensus(db, summary, clock) {
   for (const record of db.corrections) {
     if (summary.winner.correctionIds.includes(record.id)) {
       record.status = 'applied'; record.appliedAt = at; record.appliedRevision = item.revision; record.auditId = audit.id;
+    } else if (record.status === 'active' && record.code === summary.code && record.channel === summary.channel && record.baseRevision === summary.baseRevision) {
+      record.status = 'superseded';
     }
   }
   return audit;
@@ -224,7 +229,7 @@ function createQuotaServiceApp(options = {}) {
     const origin = process.env.QUOTA_CORS_ORIGIN || '*';
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Client-Id, X-Idempotency-Key');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
   });
@@ -332,6 +337,7 @@ function createQuotaServiceApp(options = {}) {
       }
     } catch (error) { return res.status(400).json({ error: error.message }); }
     let item = currentQuota(db, code);
+    const created = !item;
     const at = timestamp(clock);
     if (!item) {
       item = normalizeQuota({ code, name: body.name || code, category: body.category || 'QDII', channels: {} });
@@ -354,7 +360,7 @@ function createQuotaServiceApp(options = {}) {
     item.source = '管理员录入'; item.sourceType = 'manual';
     bump(db, item, at);
     const updatedChannels = prepared.map(([key]) => key);
-    db.audit.unshift({ id: id('audit'), type: 'manual-update', code, channel: updatedChannels.length === 1 ? updatedChannels[0] : null, channels: updatedChannels, before, after: clone(item), afterRevision: item.revision, createdAt: at });
+    db.audit.unshift({ id: id('audit'), type: 'manual-update', code, channel: updatedChannels.length === 1 ? updatedChannels[0] : null, channels: updatedChannels, before, after: clone(item), afterRevision: item.revision, created, createdAt: at });
     saveDb(dbPath, db);
     res.json({ version: db.version, item: clone(item) });
   });
@@ -374,6 +380,43 @@ function createQuotaServiceApp(options = {}) {
     items: db.corrections.map(record => ({ ...clone(record), voterHash: undefined, summary: summaryFor(db, record.code, record.channel, clock) })),
   }));
   app.get('/api/admin/audit', requireAdmin, (req, res) => res.json({ items: db.audit.map(clone) }));
+  app.post('/api/admin/corrections/:id/accept', requireAdmin, (req, res) => {
+    const record = db.corrections.find(item => item.id === req.params.id);
+    if (!record) return res.status(404).json({ error: '纠错建议不存在' });
+    if (record.status !== 'active') return res.status(409).json({ error: '该纠错建议已处理，不能重复接受' });
+    const item = currentQuota(db, record.code);
+    if (!item) return res.status(404).json({ error: '额度记录不存在' });
+    if (item.revision !== record.baseRevision) return res.status(409).json({ error: '该建议基于旧版本，不能直接覆盖，请刷新后重试' });
+    const at = timestamp(clock);
+    const before = clone(item);
+    item.channels[record.channel] = {
+      ...(item.channels[record.channel] || normalizeChannel({})),
+      ...record.fields,
+      source: '管理员主动接受建议', sourceType: 'admin-accepted-suggestion', updatedAt: at,
+    };
+    item.source = '管理员主动接受建议'; item.sourceType = 'admin-accepted-suggestion';
+    bump(db, item, at);
+    const audit = {
+      id: id('audit'), type: 'admin-accepted-suggestion', code: item.code, channel: record.channel,
+      before, after: clone(item), afterRevision: item.revision, correctionIds: [record.id], createdAt: at,
+    };
+    db.audit.unshift(audit);
+    record.status = 'accepted'; record.acceptedAt = at; record.acceptedRevision = item.revision; record.auditId = audit.id;
+    for (const other of db.corrections) {
+      if (other.id !== record.id && other.status === 'active' && other.code === record.code && other.channel === record.channel && other.baseRevision === record.baseRevision) other.status = 'superseded';
+    }
+    saveDb(dbPath, db);
+    res.json({ version: db.version, item: clone(item), audit: clone(audit) });
+  });
+  app.delete('/api/admin/corrections/:id', requireAdmin, (req, res) => {
+    const index = db.corrections.findIndex(item => item.id === req.params.id);
+    const record = index < 0 ? null : db.corrections[index];
+    if (!record) return res.status(404).json({ error: '纠错建议不存在' });
+    if (record.status !== 'active') return res.status(409).json({ error: '该纠错建议已处理，不能删除' });
+    db.corrections.splice(index, 1);
+    saveDb(dbPath, db);
+    res.json({ deleted: true, id: record.id });
+  });
   app.post('/api/admin/corrections/:id/revoke', requireAdmin, (req, res) => {
     const applied = db.audit.find(entry => entry.id === req.params.id && entry.type === 'consensus-applied');
     if (!applied) return res.status(404).json({ error: '共识更新记录不存在' });

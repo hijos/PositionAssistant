@@ -137,7 +137,7 @@ Windows 局域网开发时设置 `QUOTA_ADMIN_PASSWORD`（至少 8 个字符）�
 
 Flutter 使用独立的 `QUOTA_SERVICE_URL`，当前开发机地址为 `http://192.168.31.143:4100`。运行 `scripts\build-apk.bat` 时，脚本会自动把这个地址编译进 debug/release APK；Android 构建允许局域网 HTTP，正式环境应改用 HTTPS。App 的额度读取、云端版本刷新和“保存并上传”都走该地址。App 的“保存”只保存个人覆盖，“保存并上传”在个人保存成功后额外提交纠错建议，上传失败不会撤回个人保存。
 
-纠错按服务端看到的来源 IP 做哈希去重，同一基金、渠道和云端版本内每个 IP 只保留一票。自动采纳同时要求达到最低支持数和一致性比例，默认是 3 个来源、80%、72 小时窗口；管理员可在管理页面调整。每次手工修改、共识覆盖和管理员撤销均写入审计记录。撤销只允许针对之后没有新数据更新的共识版本。
+纠错按服务端看到的来源 IP 做哈希去重，同一基金、渠道和云端版本内每个 IP 只保留一票。自动采纳同时要求达到最低支持数和一致性比例，默认是 3 个来源、80%、72 小时窗口；管理员可在管理页面调整。管理员可在“用户纠错建议”表格中二次确认后接受或删除待处理建议；接受会直接覆盖当前渠道值并写入“管理员主动接受建议”审计记录。满足门槛的自动采纳在审计表中显示为“系统自动接受建议”，仍可在没有后续更新时撤销。每次手工修改、建议接受、共识覆盖和管理员撤销均写入审计记录。
 
 本机验证：`npm run test:quota-service`、`node --check quota-service/index.js`、`node --test test/quotas.test.js test/quotas-http.test.js`；客户端验证：在 `client/` 执行 `flutter analyze`、`flutter test test/quota_repository_test.dart`。管理密码和 IP 哈希盐不得提交到仓库。
 ## F37 用户额度覆盖、优先级和隔离
@@ -194,7 +194,6 @@ Android 本地设置页使用系统 `ACTION_OPEN_DOCUMENT` 选择 JSON 文件；
 - **历史实现缺口核实**：当前 `server/index.js` 注册/登录实际仍用 `data/db.json` 用户和进程内 sessions，尚未使用 `0002_users.sql`。因此 F13 的 PostgreSQL `owner_id` 暂用既有账号字符串，不伪造 users 外键；部署必须保留原 JSON 用户文件。未来迁移认证必须保留或显式映射 owner_id。服务重启会失效会话，账号保存的基金仍在 PostgreSQL。此处不代表 F06–F10 验收通过。
 - 本机测试：`node --test test/funds.test.js`；Flutter `flutter test`。Linux 专项数据库测试复用 `TEST_DATABASE_URL=... node --test test/catalog.integration.test.js` 的随机临时数据库流程，新增跨连接并发添加及账号隔离断言；需要独立测试实例和 CREATEDB 权限。
 - Linux 联调：使用两个账号分别登录；一个账号添加相同代码多次，列表只有一项，另一个账号列表为空；重启服务后重新登录仍可读取。Android 本地添加后关闭重开、切远端再切回，本地记录应保留且不出现在远端。真实目录筛选及设备网络仍需验收。
-
 
 
 

@@ -75,6 +75,19 @@ test('independent quota service supports manual data, consensus and safe revoke'
   assert.equal(revoked.status, 200);
   assert.equal((await request(base, 'GET', '/api/quotas')).body.items[0].channels.distribution.limit, 100);
   assert.equal((await request(base, 'POST', `/api/admin/corrections/${audit.id}/revoke`, { token, body: {} })).status, 409);
+
+  const pending = await request(base, 'POST', '/api/corrections', { headers: { 'x-forwarded-for': '192.0.2.3', 'x-client-id': 'c' }, body: { code: '000001', channel: 'distribution', status: '暂停申购', limit: null } });
+  assert.equal(pending.body.status, 'pending');
+  const correction = (await request(base, 'GET', '/api/admin/corrections', { token })).body.items.find(item => item.id === pending.body.id);
+  assert.equal(correction.status, 'active');
+  const accepted = await request(base, 'POST', `/api/admin/corrections/${pending.body.id}/accept`, { token, body: {} });
+  assert.equal(accepted.status, 200);
+  assert.equal(accepted.body.item.channels.distribution.status, '暂停申购');
+  assert.equal((await request(base, 'GET', '/api/admin/audit', { token })).body.items[0].type, 'admin-accepted-suggestion');
+
+  const removable = await request(base, 'POST', '/api/corrections', { headers: { 'x-forwarded-for': '192.0.2.4', 'x-client-id': 'd' }, body: { code: '000001', channel: 'distribution', status: '限大额', limit: 1 } });
+  assert.equal((await request(base, 'DELETE', `/api/admin/corrections/${removable.body.id}`, { token })).status, 200);
+  assert.equal((await request(base, 'GET', '/api/admin/corrections', { token })).body.items.some(item => item.id === removable.body.id), false);
 });
 
 test('admin endpoints require an admin session', async t => {
@@ -109,11 +122,15 @@ test('admin can save both channels in one request', async t => {
   assert.equal(audit.length, 1);
   assert.equal(audit[0].channel, null);
   assert.deepEqual(audit[0].channels, ['distribution', 'direct']);
+  assert.equal(audit[0].created, true);
 
   const update = await request(base, 'PUT', '/api/admin/quotas/012752', { token, body: { channels: { direct: { status: '暂停申购' } } } });
   assert.equal(update.status, 200);
   assert.equal(update.body.item.channels.distribution.limit, 1000);
   assert.equal(update.body.item.channels.direct.status, '暂停申购');
+  const laterAudit = (await request(base, 'GET', '/api/admin/audit', { token })).body.items[0];
+  assert.equal(laterAudit.type, 'manual-update');
+  assert.equal(laterAudit.created, false);
 
   const badChannel = await request(base, 'PUT', '/api/admin/quotas/012752', { token, body: { channels: { whatever: { status: '限大额' } } } });
   assert.equal(badChannel.status, 400);

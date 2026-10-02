@@ -53,15 +53,16 @@
       <p id="settingsMessage" class="muted"></p>
     </div>
     <div class="card">
-      <div class="row"><strong>额度与费率</strong><button id="reload" class="secondary">刷新</button><button id="logout" class="secondary">退出</button></div>
-      <p class="muted">第一版只支持管理员手工录入，不执行任何上游爬取。</p>
-      <div class="row" aria-label="基金筛选">
+      <div class="row"><strong>额度与费率</strong><button id="reload" class="secondary">刷新</button><button id="logout" class="secondary">退出</button><button type="button" class="secondary section-toggle" data-toggle-target="quotaContent" aria-expanded="true">收起</button></div>
+      <div id="quotaContent">
+        <p class="muted">第一版只支持管理员手工录入，不执行任何上游爬取。</p>
+        <div class="row" aria-label="基金筛选">
         <strong>筛选：</strong>
         <button type="button" class="filter-button active" data-category-filter="纳斯达克100" aria-pressed="true">纳指100</button>
         <button type="button" class="filter-button active" data-category-filter="标普500" aria-pressed="true">标普500</button>
         <button type="button" class="filter-button" id="excludeC" aria-pressed="false">排除C</button>
-      </div>
-      <form id="quotaForm">
+        </div>
+        <form id="quotaForm">
         <div class="autocomplete"><input id="code" pattern="\d{6}" placeholder="基金代码" autocomplete="off" required><div id="codeSuggestions" class="suggestions hidden"></div></div>
         <div class="autocomplete"><input id="name" placeholder="基金名称" autocomplete="off" required><div id="nameSuggestions" class="suggestions hidden"></div></div>
         <select id="category"><option>纳斯达克100</option><option>标普500</option></select>
@@ -73,12 +74,13 @@
         <input id="sourceUrl" placeholder="来源链接（可选）">
         <input id="detail" placeholder="说明（可选）">
         <button>保存额度</button>
-      </form>
-      <p id="quotaMessage" class="muted"></p>
-      <div class="scroll"><table><thead><tr><th><button type="button" class="table-sort" data-sort="code">代码 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="name">名称 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="category">分类 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="maxLimit">最大额度 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="distribution">代销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="direct">直销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="feeRate">费率 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="updatedAt">来源/录入时间 <span class="sort-indicator"></span></button></th><th>操作</th></tr></thead><tbody id="quotaRows"></tbody></table></div>
+        </form>
+        <p id="quotaMessage" class="muted"></p>
+        <div class="scroll"><table><thead><tr><th><button type="button" class="table-sort" data-sort="code">代码 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="name">名称 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="category">分类 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="maxLimit">最大额度 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="distribution">代销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="direct">直销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="feeRate">费率 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="updatedAt">来源/录入时间 <span class="sort-indicator"></span></button></th><th>操作</th></tr></thead><tbody id="quotaRows"></tbody></table></div>
+      </div>
     </div>
-    <div class="card"><strong>用户纠错建议</strong><div class="scroll"><table><thead><tr><th>时间</th><th>基金/渠道</th><th>建议</th><th>当前进度</th><th>状态</th></tr></thead><tbody id="correctionRows"></tbody></table></div></div>
-    <div class="card"><strong>更新审计与撤销</strong><div class="scroll"><table><thead><tr><th>时间</th><th>类型</th><th>基金/渠道</th><th>说明</th><th>操作</th></tr></thead><tbody id="auditRows"></tbody></table></div></div>
+    <div class="card"><div class="row"><strong>用户纠错建议</strong><button type="button" class="secondary section-toggle" data-toggle-target="correctionContent" aria-expanded="true">收起</button></div><div id="correctionContent"><div class="scroll"><table><thead><tr><th>时间</th><th>基金代码</th><th>基金名称</th><th>渠道</th><th>建议</th><th>当前进度</th><th>状态</th><th>操作</th></tr></thead><tbody id="correctionRows"></tbody></table></div></div></div>
+    <div class="card"><div class="row"><strong>更新审计与撤销</strong><button type="button" class="secondary section-toggle" data-toggle-target="auditContent" aria-expanded="true">收起</button></div><div id="auditContent"><div class="scroll"><table><thead><tr><th>时间</th><th>类型</th><th>基金代码</th><th>基金名称</th><th>渠道</th><th>变动</th><th>说明</th><th>操作</th></tr></thead><tbody id="auditRows"></tbody></table></div></div></div>
   </section>
 </main>
 <script>
@@ -88,6 +90,13 @@ let quotaItems = [];
 let quotaSort = { key: 'name', direction: 1 };
 const quotaFilters = { categories: new Set(['纳斯达克100', '标普500']), excludeC: false };
 const $ = id => document.getElementById(id);
+const setupSectionToggles = () => document.querySelectorAll('[data-toggle-target]').forEach(button => {
+  const target = $(button.dataset.toggleTarget);
+  if (!target) return;
+  const setCollapsed = collapsed => { target.classList.toggle('hidden', collapsed); button.textContent = collapsed ? '展开' : '收起'; button.setAttribute('aria-expanded', collapsed ? 'false' : 'true'); };
+  setCollapsed(button.getAttribute('aria-expanded') === 'false');
+  button.onclick = () => setCollapsed(!target.classList.contains('hidden'));
+});
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const json = async (url, options = {}) => { const response = await fetch(url, { ...options, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.headers || {}) } }); const body = await response.json().catch(() => ({})); if (!response.ok) throw Error(body.error || `HTTP ${response.status}`); return body; };
 const channelText = (item, key) => { const c = item.channels?.[key]; if (!c) return '-'; if (c.status === '限大额') return esc(c.limit == null ? '-' : c.limit); return esc(c.status || '-'); };
@@ -165,6 +174,19 @@ const setupAutocomplete = () => {
   $('code').onblur = $('name').onblur = () => setTimeout(hideSuggestions, 120);
 };
 const channelLabel = key => ({ distribution: '代销', direct: '直销' })[key] || key || '-';
+const auditTypeLabel = type => ({ 'manual-update': 'manual-update', 'admin-accepted-suggestion': '管理员主动接受建议', 'consensus-applied': '系统自动接受建议', 'consensus-revoked': '撤销系统自动接受建议' })[type] || type || '-';
+const auditChannelValue = channel => { if (!channel) return '-'; if (channel.status === '限大额') return channel.limit == null ? '限大额' : String(channel.limit); return String(channel.status || '-'); };
+const auditPercentValue = value => { if (value == null || value === '') return '-'; const percent = Number(value) * 100; if (!Number.isFinite(percent)) return '-'; return `${percent.toFixed(2).replace(/\.?0+$/, '')}%`; };
+const auditChanges = item => {
+  const before = item.before || {}; const after = item.after || {}; const beforeChannels = before.channels || {}; const afterChannels = after.channels || {};
+  const channelKeys = ['direct', 'distribution'].filter(key => beforeChannels[key] || afterChannels[key]);
+  const changes = channelKeys.map(key => [channelLabel(key), auditChannelValue(beforeChannels[key]), auditChannelValue(afterChannels[key])]).filter(([, from, to]) => from !== to);
+  const beforeFee = auditPercentValue(before.feeRate); const afterFee = auditPercentValue(after.feeRate);
+  if (beforeFee !== afterFee) changes.push(['费率', beforeFee, afterFee]);
+  if (!changes.length) return '-';
+  if (item.type === 'manual-update' && item.created) return `<strong>新增</strong>：${changes.filter(([, , to]) => to !== '-').map(([label, , to]) => `${esc(label)}：${esc(to)}`).join('；') || '-'}`;
+  return changes.map(([label, from, to]) => `${esc(label)}：${esc(from)} -&gt; ${esc(to)}`).join('<br>');
+};
 const syncLimitInput = () => { for (const [statusId, limitId] of [['statusDist', 'limitDist'], ['statusDirect', 'limitDirect']]) { const open = $(statusId).value === '开放申购'; $(limitId).disabled = open; if (open) $(limitId).value = ''; } };
 async function load() {
   const [quotas, settings, corrections, audit, catalog] = await Promise.all([json('/api/admin/quotas'), json('/api/admin/settings'), json('/api/admin/corrections'), json('/api/admin/audit'), json('/api/admin/fund-catalog')]);
@@ -172,9 +194,11 @@ async function load() {
   $('minSupport').value = settings.minSupport; $('agreementRatio').value = settings.agreementRatio; $('windowHours').value = settings.windowHours;
   quotaItems = quotas.items || [];
   renderQuotaRows();
-  $('correctionRows').innerHTML = corrections.items.slice(0, 100).map(item => { const s = item.summary; const winner = s?.winner; return `<tr><td>${esc(item.createdAt)}</td><td>${esc(item.code)}/${esc(channelLabel(item.channel))}</td><td>${esc(item.fields.status)} ${esc(item.fields.limit == null ? '-' : item.fields.limit)}</td><td>${winner ? `${esc(winner.support)}/${esc(winner.total)}（${esc((winner.ratio * 100).toFixed(0))}%）` : '-'}</td><td>${esc(item.status)}</td></tr>`; }).join('');
-  $('auditRows').innerHTML = audit.items.slice(0, 100).map(item => `<tr><td>${esc(item.createdAt)}</td><td>${esc(item.type)}</td><td>${esc(item.code)}/${esc(Array.isArray(item.channels) ? item.channels.map(channelLabel).join('+') : channelLabel(item.channel))}</td><td>版本 ${esc(item.afterRevision || '-')}</td><td>${item.type === 'consensus-applied' ? `<button class="danger" data-revoke="${esc(item.id)}">撤销</button>` : ''}</td></tr>`).join('');
+  $('correctionRows').innerHTML = corrections.items.slice(0, 100).map(item => { const s = item.summary; const winner = s?.winner; const fund = quotaItems.find(quota => quota.code === item.code); const actions = item.status === 'active' ? `<button data-accept="${esc(item.id)}">接受</button> <button class="danger" data-delete-correction="${esc(item.id)}">删除</button>` : ''; return `<tr><td>${esc(item.createdAt)}</td><td>${esc(item.code)}</td><td>${esc(fund?.name || '-')}</td><td>${esc(channelLabel(item.channel))}</td><td>${esc(item.fields.status)} ${esc(item.fields.limit == null ? '-' : item.fields.limit)}</td><td>${winner ? `${esc(winner.support)}/${esc(winner.total)}（${esc((winner.ratio * 100).toFixed(0))}%）` : '-'}</td><td>${esc(item.status)}</td><td>${actions}</td></tr>`; }).join('');
+  $('auditRows').innerHTML = audit.items.slice(0, 100).map(item => { const fund = quotaItems.find(quota => quota.code === item.code) || item.after; const channels = Array.isArray(item.channels) ? item.channels.map(channelLabel).join('+') : channelLabel(item.channel); return `<tr><td>${esc(item.createdAt)}</td><td>${esc(auditTypeLabel(item.type))}</td><td>${esc(item.code)}</td><td>${esc(fund?.name || '-')}</td><td>${esc(channels)}</td><td>${auditChanges(item)}</td><td>版本 ${esc(item.afterRevision || '-')}</td><td>${item.type === 'consensus-applied' ? `<button class="danger" data-revoke="${esc(item.id)}">撤销</button>` : ''}</td></tr>`; }).join('');
   $('statusDist').onchange = $('statusDirect').onchange = syncLimitInput;
+  document.querySelectorAll('[data-accept]').forEach(button => button.onclick = async () => { if (!confirm('确认接受这条纠错建议并覆盖更新额度数据？')) return; try { await json(`/api/admin/corrections/${button.dataset.accept}/accept`, { method: 'POST', body: '{}' }); await load(); } catch (error) { alert(error.message); } });
+  document.querySelectorAll('[data-delete-correction]').forEach(button => button.onclick = async () => { if (!confirm('确认删除这条纠错建议？')) return; try { await json(`/api/admin/corrections/${button.dataset.deleteCorrection}`, { method: 'DELETE' }); await load(); } catch (error) { alert(error.message); } });
   document.querySelectorAll('[data-revoke]').forEach(button => button.onclick = async () => { if (!confirm('确认撤销这次用户共识覆盖？')) return; try { await json(`/api/admin/corrections/${button.dataset.revoke}/revoke`, { method: 'POST', body: '{}' }); await load(); } catch (error) { alert(error.message); } });
 }
 $('loginForm').onsubmit = async event => { event.preventDefault(); try { const body = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: $('password').value }) }).then(async response => { const value = await response.json(); if (!response.ok) throw Error(value.error); return value; }); token = body.token; sessionStorage.setItem('quotaAdminToken', token); $('login').classList.add('hidden'); $('app').classList.remove('hidden'); await load(); } catch (error) { $('loginError').textContent = error.message; } };
@@ -186,6 +210,7 @@ if (token) { $('login').classList.add('hidden'); $('app').classList.remove('hidd
 setupAutocomplete();
 setupQuotaSorting();
 setupQuotaFilters();
+setupSectionToggles();
 updateQuotaFilterButtons();
 </script>
 </body>
