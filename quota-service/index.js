@@ -8,6 +8,26 @@ const CHANNELS = new Set(['distribution', 'direct']);
 const DEFAULT_SETTINGS = { minSupport: 3, agreementRatio: 0.8, windowHours: 72 };
 const FUND_CATALOG = JSON.parse(fs.readFileSync(path.join(__dirname, 'fund-catalog.json'), 'utf8'));
 
+function fundFamilyKey(item) {
+  return String(item.name || '')
+    .replace(/\(人民币\)/g, '')
+    .replace(/人民币/g, '')
+    .replace(/[ACDEFI]$/, '');
+}
+
+function fundShareClass(item) {
+  const normalized = String(item.name || '').replace(/\(人民币\)/g, '').replace(/人民币/g, '');
+  const match = normalized.match(/([ACDEFI])$/);
+  return match ? { A: 0, C: 1, D: 2, E: 3, F: 4, I: 5 }[match[1]] : 9;
+}
+
+function compareFunds(a, b) {
+  return String(a.category).localeCompare(String(b.category), 'zh-CN')
+    || fundFamilyKey(a).localeCompare(fundFamilyKey(b), 'zh-CN')
+    || fundShareClass(a) - fundShareClass(b)
+    || String(a.code).localeCompare(String(b.code));
+}
+
 // Keep the admin autocomplete source safe to use even if the seed file is
 // edited by hand: a duplicate code would make the UI choose an arbitrary
 // name, and a malformed code cannot be a valid fund identifier.
@@ -17,6 +37,7 @@ if (!Array.isArray(FUND_CATALOG) || FUND_CATALOG.some(item => !item || !/^\d{6}$
 if (new Set(FUND_CATALOG.map(item => String(item.code))).size !== FUND_CATALOG.length) {
   throw new Error('quota-service fund catalog contains duplicate codes');
 }
+FUND_CATALOG.sort(compareFunds);
 
 function clone(value) { return value == null ? value : JSON.parse(JSON.stringify(value)); }
 function timestamp(clock) { return clock().toISOString(); }

@@ -887,3 +887,12 @@
 - 验证：`node --check quota-service/index.js`；`node --test test/quota-service.test.js test/quotas-http.test.js`（4 项通过）。
 - 未覆盖：额度子服务仍使用静态目录，不会自动从上游刷新；目录更新后需重启服务加载新文件。
 - 更新时间：2026-10-02。
+
+### 用户追加：额度子服务基金目录补全与名称归组
+
+- 状态：done
+- 修改文件：`quota-service/fund-catalog.json`、`quota-service/index.js`、`quota-service/README.md`、`test/quota-service.test.js`。
+- 已实现：目录改为覆盖额度数据中的全部纳斯达克100与标普500基金份额（包含 C/D/E/F/I 类及已有场内代码），当前为纳指 43 支、标普 22 支；`019172`/`019173` 摩根纳斯达克100 A/C 已纳入。联想目录按基金名称族和份额类别排序，同一基金的 A/C/D/E/F/I 连续显示；额度排序保持独立，不强制按名称归组。
+- 验证：`node --check quota-service/index.js`；`node --test test/quota-service.test.js`（3 项通过），覆盖 A/C 相邻、目录完整性和典型代码名称映射。
+- 未覆盖：额度子服务仍使用静态目录快照，目录更新后需重启服务加载。
+- 更新时间：2026-10-02。

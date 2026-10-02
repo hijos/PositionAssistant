@@ -13,7 +13,7 @@ node quota-service/index.js
 
 Open `http://127.0.0.1:4100` on the PC. From a phone on the same WiFi use `http://<PC-LAN-IP>:4100`.
 
-The first version does not crawl any upstream site for quota status. The autocomplete seed in `fund-catalog.json` is a checked snapshot of the project's Eastmoney fund-code catalog; it is kept separate from quota records so a code and name are always taken from the same catalog row. Use the management page to enter the quota status/daily limit and fee rate for the distribution and direct channels in a single save.
+The first version does not crawl any upstream site for quota status. The autocomplete seed in `fund-catalog.json` is a checked snapshot of the project's Eastmoney fund-code catalog; it includes all configured Nasdaq-100 and S&P-500 share classes, including C shares. It is kept separate from quota records so a code and name are always taken from the same catalog row. Name-order suggestions group share classes from the same fund together; quota ordering remains independent. Use the management page to enter the quota status/daily limit and fee rate for the distribution and direct channels in a single save.
 
 ## API
 
