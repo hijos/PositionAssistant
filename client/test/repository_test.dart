@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:position_assistant/data/fund_repository.dart';
 import 'package:position_assistant/data/holding_repository.dart';
+import 'package:position_assistant/data/offline_repository.dart';
 import 'package:position_assistant/data/transaction_repository.dart';
 
 import 'dart:convert';
@@ -170,6 +171,106 @@ void main() {
         transactions.create({...saved, 'amount': 0}),
         throwsFormatException,
       );
+    },
+  );
+
+  test(
+    'local plans generate daily entries and preserve transaction settings',
+    () async {
+      final plans = LocalPlanRepository(() async => repository);
+      final plan = await plans.create(
+        fundCode: '000001',
+        fundName: '测试基金A',
+        mode: 'amount',
+        value: 100,
+        cycle: 'daily',
+        startDate: '2026-10-01',
+        executionDay: 1,
+        feeRate: 0.2,
+        cutoff: 'after',
+        note: '每日扣款',
+      );
+      expect(plan['source'], '定投计划');
+      expect(await plans.generateDueEntries(today: DateTime(2026, 10, 3)), 3);
+      expect(await plans.generateDueEntries(today: DateTime(2026, 10, 3)), 0);
+      final entries = await plans.entries('${plan['id']}');
+      expect(entries, hasLength(3));
+      final confirmed = await plans.confirmEntry(
+        entries.firstWhere(
+              (item) => item['scheduledDate'] == '2026-10-02',
+            )['id']
+            as String,
+      );
+      expect(confirmed['status'], 'pending-confirmation');
+      final transaction = (await repository.list('transactions')).single;
+      expect(transaction['source'], '定投计划');
+      expect(transaction['feeRate'], 0.2);
+      expect(transaction['cutoff'], 'after');
+    },
+  );
+
+  test(
+    'deleting a pending entry hides it without automatic recreation',
+    () async {
+      final plans = LocalPlanRepository(() async => repository);
+      final plan = await plans.create(
+        fundCode: '000001',
+        fundName: '测试基金A',
+        mode: 'amount',
+        value: 100,
+        cycle: 'daily',
+        startDate: '2026-10-01',
+        executionDay: 1,
+      );
+      final planId = plan['id'] as String;
+      expect(await plans.generateDueEntries(today: DateTime(2026, 10, 1)), 1);
+      final entry = (await plans.entries(planId)).single;
+
+      final deleted = await plans.deleteEntry(entry['id'] as String);
+
+      expect(deleted['status'], 'deleted');
+      expect(await plans.entries(planId), isEmpty);
+      expect(await plans.generateDueEntries(today: DateTime(2026, 10, 1)), 0);
+
+      final restored = await plans.generateEntry(
+        planId,
+        '2026-10-01',
+        supplement: true,
+      );
+      expect(restored['status'], 'pending');
+      expect(await plans.entries(planId), hasLength(1));
+    },
+  );
+
+  test(
+    'deleting a plan removes its entries and retains transactions',
+    () async {
+      final plans = LocalPlanRepository(() async => repository);
+      final plan = await plans.create(
+        fundCode: '000001',
+        fundName: '测试基金A',
+        mode: 'amount',
+        value: 100,
+        cycle: 'daily',
+        startDate: '2026-10-01',
+        executionDay: 1,
+      );
+      await plans.generateDueEntries(today: DateTime(2026, 10, 2));
+      final entry = (await plans.entries(plan['id'] as String)).first;
+      await plans.confirmEntry(entry['id'] as String);
+      await repository.put('plans', 'other-plan', {'id': 'other-plan'});
+      await repository.put('planEntries', 'other-entry', {
+        'id': 'other-entry',
+        'planId': 'other-plan',
+      });
+
+      await plans.deletePlan(plan['id'] as String);
+
+      expect(await repository.get('plans', plan['id'] as String), isNull);
+      expect(await plans.entries(plan['id'] as String), isEmpty);
+      expect(await repository.list('transactions'), hasLength(1));
+      expect(await repository.get('plans', 'other-plan'), isNotNull);
+      expect(await plans.entries('other-plan'), hasLength(1));
     },
   );
 

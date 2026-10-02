@@ -34,31 +34,72 @@ class LocalPlanRepository {
     required String cycle,
     required String startDate,
     required int executionDay,
+    String transactionType = 'buy',
+    String fundType = '',
+    String feeMode = 'rate',
+    double feeRate = 0,
+    double fixedFee = 0,
+    String cutoff = 'before',
+    String note = '',
+    String source = '定投计划',
   }) async {
     if (!RegExp(r'^\d{6}$').hasMatch(fundCode) || fundName.trim().isEmpty) {
       throw const FormatException('基金信息无效');
     }
-    if (!['amount', 'shares'].contains(mode) ||
+    if (!['buy', 'sell'].contains(transactionType) ||
+        !['amount', 'shares'].contains(mode) ||
         !value.isFinite ||
         value < 0.01) {
       throw const FormatException('定投金额或份额必须大于0');
     }
-    if (!['weekly', 'monthly'].contains(cycle) ||
+    if (!['daily', 'weekly', 'monthly'].contains(cycle) ||
         executionDay < 1 ||
-        executionDay > (cycle == 'weekly' ? 7 : 31) ||
+        executionDay >
+            (cycle == 'daily'
+                ? 1
+                : cycle == 'weekly'
+                ? 7
+                : 31) ||
         !_validDate(startDate)) {
       throw const FormatException('定投周期或日期无效');
     }
+    if (!['rate', 'fixed'].contains(feeMode) ||
+        !feeRate.isFinite ||
+        feeRate < 0 ||
+        feeRate >= 100 ||
+        !fixedFee.isFinite ||
+        fixedFee < 0 ||
+        (feeMode == 'rate' && fixedFee != 0) ||
+        (feeMode == 'fixed' && feeRate != 0) ||
+        (transactionType == 'buy' && mode == 'amount' && fixedFee > value)) {
+      throw const FormatException('手续费参数无效');
+    }
+    if (!['before', 'after'].contains(cutoff) ||
+        note.trim().length > 200 ||
+        source.trim().isEmpty ||
+        source.trim().length > 100) {
+      throw const FormatException('交易备注或来源无效');
+    }
+    final roundedValue = _round(value, mode == 'amount' ? 2 : 4);
+    final roundedFee = _round(fixedFee, 2);
     final record = <String, dynamic>{
       'id': 'local-plan-${DateTime.now().microsecondsSinceEpoch}',
       'fundCode': fundCode,
       'fundName': fundName.trim(),
+      'fundType': fundType.trim(),
+      'type': transactionType,
       'mode': mode,
-      'amount': mode == 'amount' ? value : 0,
-      'shares': mode == 'shares' ? value : 0,
+      'amount': mode == 'amount' ? roundedValue : 0,
+      'shares': mode == 'shares' ? roundedValue : 0,
+      'feeMode': feeMode,
+      'feeRate': feeMode == 'rate' ? feeRate : 0,
+      'fixedFee': feeMode == 'fixed' ? roundedFee : 0,
+      'cutoff': cutoff,
       'cycle': cycle,
       'startDate': startDate,
       'executionDay': executionDay,
+      'note': note.trim(),
+      'source': source.trim(),
       'enabled': true,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     };
@@ -76,11 +117,70 @@ class LocalPlanRepository {
     return next;
   }
 
+  /// Removes the plan and its entries while retaining recorded transactions.
+  Future<void> deletePlan(String id) async {
+    final storage = await open();
+    await storage.transaction((session) async {
+      if (await session.get('plans', id) == null) {
+        throw const FormatException('定投计划不存在');
+      }
+      for (final entry in await session.list('planEntries')) {
+        if (entry['planId'] == id) {
+          await session.delete('planEntries', entry['id'] as String);
+        }
+      }
+      await session.delete('plans', id);
+    });
+  }
+
+  /// Creates all due, not-yet-created entries for enabled plans through [today].
+  /// The date argument is injectable so callers and tests can run this
+  /// idempotently without depending on the device clock.
+  Future<int> generateDueEntries({DateTime? today, String? planId}) async {
+    final storage = await open();
+    final end = today ?? DateTime.now();
+    final endDate = DateTime(end.year, end.month, end.day);
+    return storage.transaction((session) async {
+      final plans = (await session.list('plans')).where(
+        (plan) =>
+            plan['enabled'] == true && (planId == null || plan['id'] == planId),
+      );
+      final entries = await session.list('planEntries');
+      var created = 0;
+      for (final plan in plans) {
+        final start = DateTime.tryParse('${plan['startDate']}');
+        if (start == null) continue;
+        var cursor = DateTime(start.year, start.month, start.day);
+        while (!cursor.isAfter(endDate)) {
+          final date = _formatDate(cursor);
+          if (_validPlanDate(plan, date) &&
+              !entries.any(
+                (entry) =>
+                    entry['planId'] == plan['id'] &&
+                    entry['scheduledDate'] == date,
+              )) {
+            final entry = _entryForPlan(plan, date);
+            await session.put('planEntries', entry['id'] as String, entry);
+            entries.add(entry);
+            created++;
+          }
+          cursor = cursor.add(const Duration(days: 1));
+        }
+      }
+      return created;
+    });
+  }
+
   Future<List<Map<String, dynamic>>> entries(String planId) async =>
       (await open())
           .list('planEntries')
           .then(
-            (items) => items.where((item) => item['planId'] == planId).toList(),
+            (items) => items
+                .where(
+                  (item) =>
+                      item['planId'] == planId && item['status'] != 'deleted',
+                )
+                .toList(),
           );
 
   Future<Map<String, dynamic>> generateEntry(
@@ -98,25 +198,16 @@ class LocalPlanRepository {
         throw const FormatException('执行日期与计划不匹配');
       }
       final dedupe = '$planId:$scheduledDate';
-      final existing = (await session.list('planEntries')).where(
-        (item) =>
-            item['planId'] == planId && item['scheduledDate'] == scheduledDate,
-      );
-      if (existing.isNotEmpty) return existing.first;
-      final entry = <String, dynamic>{
-        'id': 'local-entry-${DateTime.now().microsecondsSinceEpoch}',
-        'dedupeKey': dedupe,
-        'planId': planId,
-        'fundCode': plan['fundCode'],
-        'fundName': plan['fundName'],
-        'mode': plan['mode'],
-        'amount': plan['amount'],
-        'shares': plan['shares'],
-        'scheduledDate': scheduledDate,
-        'status': 'pending',
-        'transactionId': null,
-        'createdAt': DateTime.now().toUtc().toIso8601String(),
-      };
+      final existing = (await session.list('planEntries'))
+          .where(
+            (item) =>
+                item['planId'] == planId &&
+                item['scheduledDate'] == scheduledDate,
+          )
+          .toList();
+      final active = existing.where((item) => item['status'] != 'deleted');
+      if (active.isNotEmpty) return active.first;
+      final entry = _entryForPlan(plan, scheduledDate, dedupeKey: dedupe);
       await session.put('planEntries', entry['id'] as String, entry);
       return entry;
     });
@@ -135,6 +226,26 @@ class LocalPlanRepository {
         ...entry,
         'status': 'skipped',
         'skippedAt': DateTime.now().toUtc().toIso8601String(),
+      };
+      await session.put('planEntries', id, next);
+      return next;
+    });
+  }
+
+  /// Hides a pending entry while retaining a tombstone so automatic due-date
+  /// generation does not recreate it on the next page load.
+  Future<Map<String, dynamic>> deleteEntry(String id) async {
+    final storage = await open();
+    return storage.transaction((session) async {
+      final entry = await session.get('planEntries', id);
+      if (entry == null) throw const FormatException('定投记录不存在');
+      if (entry['status'] != 'pending') {
+        throw const FormatException('仅待记账记录可删除');
+      }
+      final next = {
+        ...entry,
+        'status': 'deleted',
+        'deletedAt': DateTime.now().toUtc().toIso8601String(),
       };
       await session.put('planEntries', id, next);
       return next;
@@ -161,6 +272,7 @@ class LocalPlanRepository {
       final duplicate = (await session.list('planEntries')).any(
         (other) =>
             other['id'] != id &&
+            other['status'] != 'deleted' &&
             other['planId'] == entry['planId'] &&
             other['scheduledDate'] == date,
       );
@@ -200,6 +312,24 @@ class LocalPlanRepository {
       final now = DateTime.now().toUtc().toIso8601String();
       const reason = '缺少对应交易日正式净值，等待净值确认';
       final fundCode = '${entry['fundCode']}';
+      final type = '${entry['type'] ?? 'buy'}';
+      final feeMode = '${entry['feeMode'] ?? 'rate'}';
+      final feeRate = num.tryParse('${entry['feeRate'] ?? 0}')?.toDouble() ?? 0;
+      final fixedFee =
+          num.tryParse('${entry['fixedFee'] ?? 0}')?.toDouble() ?? 0;
+      final cutoff = '${entry['cutoff'] ?? 'before'}';
+      if (!['buy', 'sell'].contains(type) ||
+          !['rate', 'fixed'].contains(feeMode) ||
+          !['before', 'after'].contains(cutoff) ||
+          !feeRate.isFinite ||
+          feeRate < 0 ||
+          feeRate >= 100 ||
+          !fixedFee.isFinite ||
+          fixedFee < 0 ||
+          (feeMode == 'rate' && fixedFee != 0) ||
+          (feeMode == 'fixed' && feeRate != 0)) {
+        throw const FormatException('定投交易参数无效');
+      }
       final fund = await session.get('funds', fundCode);
       if (fund == null) {
         await session.put('funds', fundCode, {
@@ -214,17 +344,17 @@ class LocalPlanRepository {
         'fundCode': fundCode,
         'fundName': entry['fundName'],
         'fundType': fund?['type'] ?? plan['fundType'] ?? '',
-        'type': 'buy',
+        'type': type,
         'entryMode': mode,
         'amount': mode == 'amount' ? value : 0,
         'shares': mode == 'shares' ? value : 0,
-        'feeMode': 'rate',
-        'feeRate': 0,
-        'fixedFee': 0,
+        'feeMode': feeMode,
+        'feeRate': feeMode == 'rate' ? feeRate : 0,
+        'fixedFee': feeMode == 'fixed' ? fixedFee : 0,
         'date': entry['scheduledDate'],
-        'cutoff': 'before',
+        'cutoff': cutoff,
         'note': entry['note'] ?? '',
-        'source': '定投确认',
+        'source': '定投计划',
         'status': 'pending',
         'pendingReason': reason,
         'createdAt': now,
@@ -248,12 +378,53 @@ class LocalPlanRepository {
         date.compareTo('${plan['startDate']}') < 0) {
       return false;
     }
+    if (plan['cycle'] == 'daily') return true;
     final day = parsed.weekday;
     return plan['cycle'] == 'weekly'
         ? day == plan['executionDay']
-        : parsed.day == plan['executionDay'];
+        : plan['cycle'] == 'monthly' && parsed.day == plan['executionDay'];
+  }
+
+  Map<String, dynamic> _entryForPlan(
+    Map<String, dynamic> plan,
+    String scheduledDate, {
+    String? dedupeKey,
+  }) {
+    final planId = '${plan['id']}';
+    return <String, dynamic>{
+      'id': 'local-entry-$planId:$scheduledDate',
+      'dedupeKey': dedupeKey ?? '$planId:$scheduledDate',
+      'planId': planId,
+      'fundCode': plan['fundCode'],
+      'fundName': plan['fundName'],
+      'fundType': plan['fundType'] ?? '',
+      'type': plan['type'] ?? 'buy',
+      'mode': plan['mode'],
+      'amount': plan['amount'],
+      'shares': plan['shares'],
+      'feeMode': plan['feeMode'] ?? 'rate',
+      'feeRate': plan['feeRate'] ?? 0,
+      'fixedFee': plan['fixedFee'] ?? 0,
+      'cutoff': plan['cutoff'] ?? 'before',
+      'note': plan['note'] ?? '',
+      'source': '定投计划',
+      'scheduledDate': scheduledDate,
+      'status': 'pending',
+      'transactionId': null,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+    };
   }
 }
+
+double _round(double value, int decimals) {
+  final scale = decimals == 4 ? 10000 : 100;
+  return (value * scale).round() / scale;
+}
+
+String _formatDate(DateTime date) =>
+    '${date.year.toString().padLeft(4, '0')}-'
+    '${date.month.toString().padLeft(2, '0')}-'
+    '${date.day.toString().padLeft(2, '0')}';
 
 class LocalQuotaRepository {
   LocalQuotaRepository(this.open);

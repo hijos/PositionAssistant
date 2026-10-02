@@ -4,11 +4,11 @@
 
 ## 当前状态
 
-- 当前阶段：F43 已完成；F41 已实现，待 Android/Gradle 环境完成专项补充验收；F42 已完成；F48（用户追加：已取消交易删除与批量清理）已完成；F26 待 Linux PostgreSQL 与上游行情联通验收；F14 待 Linux PostgreSQL、正式数据源与 Android 真机联调。
+- 当前阶段：F43 已完成；F41 已实现，待 Android/Gradle 环境完成专项补充验收；F42 已完成；F48（用户追加：已取消交易删除与批量清理）已完成；本次用户追加的定投计划自动化扩展已实现，待 Android/远端手工验收；F26 待 Linux PostgreSQL 与上游行情联通验收；F14 待 Linux PostgreSQL、正式数据源与 Android 真机联调。
 - 队列已标记完成：`F01`、`F02`、`F05`、`F09`、`F10`、`F15`、`F16`、`F17`、`F18`、`F19`、`F20`、`F21`、`F22`、`F23`、`F24`、`F25`、`F27`、`F28`、`F29`、`F30`、`F31`、`F32`、`F33`、`F34`、`F35`、`F36`、`F37`、`F38`、`F39`、`F40`、`F48`；其中 F10 上次仅运行语法检查和密码测试，尚无专项越权测试结果，不应视为隔离验收通过。
 - 当前待执行任务：F44 Web 与 Android 远端一致性验收。
 - 待外部验收：`F03`、`F04`、`F06`、`F07`、`F08`、`F11`、`F12`、`F13`、`F26` 为 `implemented_pending_validation`；具体遗留见各项记录。
-- 正在执行的任务：（无）。本次会话完成用户追加的界面精简（持仓页定投入口与入口行副标题），未启动 F44。
+- 正在执行的任务：（无）。本次会话完成用户追加的定投计划自动化扩展（交易模板复用、每日频率、自动生成一期记录与来源标记），未启动 F44。
 - F48 结果：done；服务端永久删除与批量清理接口、Flutter 仓储与交易记录页交互均已实现并通过本机测试；未做 Android 真机与真实远端手工验收。
 - F49 结果：done；持仓概览改为全宽专用卡片（四行标签/数值对齐、预估收益含说明弹窗）、基金行改为左右两列紧凑布局，统一 `￥`/两位小数/中文括号格式，并补齐远端与服务端的 `estimatedMarketValue`；本机 `flutter analyze` 无问题、`flutter test` 58 项通过；未做真机手工验收与 APK 重打包。
 - F51 结果：done；底部导航改为交易记录直达、自选基金和持仓内定投计划，新增自选添加基金与当前持仓添加交易入口；`flutter analyze` 通过，完整 `flutter test` 61 项通过。
@@ -928,4 +928,30 @@
 - 已实现：云端额度刷新在额度服务返回记录后，按六位基金代码请求东方财富 `pingzhongdata/{code}.js`，解析 `syl_1n` 百分比并转换为客户端使用的小数收益率；已有服务端值优先，网络失败保留上一轮缓存值，避免影响额度刷新和用户覆盖。
 - 验证：`flutter analyze lib/data/quota_repository.dart test/quota_repository_test.dart` 无问题；`flutter test test/quota_repository_test.dart` 4 项通过。
 - 未覆盖：真实 Android 设备和额度服务联通验收待后续部署环境执行。
+
+### 用户追加：定投计划自动化、每日频率与交易模板复用
+
+- 状态：`implemented_pending_validation`；本次未启动 F44。
+- 修改文件：`client/lib/data/offline_repository.dart`、`client/lib/offline_pages.dart`、`client/lib/main.dart`、`client/test/repository_test.dart`、`client/test/offline_plan_test.dart`、`server/index.js`、`test/plans.test.js`、`web/index.html`、本文件。
+- 已实现：
+  - 定投计划复用交易录入的买入/卖出方向、基金选择与搜索、按金额/份额录入、费率/固定手续费、15:00 前后、备注和来源字段；来源统一写入 `定投计划`。
+  - 周期新增“每天”，保留每周/每月；每天不再显示执行日，周/月继续支持执行日选择。
+  - 本地计划页弹窗扩大到最多 640px，并按交易录入页的结构组织字段；计划详情展示每期方向、金额/份额、手续费和来源。
+  - 本地仓储按启用计划自动生成从起始日期到当天的待记账记录，按计划与日期幂等；打开计划列表或一期记录页会补齐遗漏期次。
+  - 服务端在读取计划/期次以及后台定时任务中自动生成到期记录；一期确认会继承计划的交易方向、录入方式、费用、截止时间、备注和基金类型，并创建来源为 `定投计划` 的交易。
+- 已确定约定：定投自动化只负责生成待记账期次；实际交易仍需用户确认扣款/执行，正式净值缺失时保持待确认，不直接计入正式持仓。暂停计划不会继续生成新期次，恢复后会补齐尚未生成的符合日期。
+- 测试命令及结果：`flutter test`（88 项通过，包含新增弹窗/每日频率测试）；`flutter analyze lib/offline_pages.dart lib/data/offline_repository.dart lib/main.dart` 仅保留既有 4 条 info，无 error/warning；`node --check server/index.js` 通过；`node --test --test-name-pattern='支持每日' test/plans.test.js`、`node --test --test-name-pattern='自动生成到期' test/plans.test.js` 和 `node --test --test-name-pattern='字段校验' test/plans.test.js` 均通过；Web 内联脚本通过 `new Function` 语法检查。
+- 未覆盖或遗留：尚未在 Android 真机和真实远端部署上手工验收弹窗视觉、后台定时生成与网络净值确认；完整 `test/plans.test.js` 仍受既有 Node 测试共享临时数据库并发问题影响，相关失败与本次自动化逻辑无关；Flutter analyzer 的 4 条 info 来自原有无大括号 `if` 写法。
+- 下一任务：F44 Web 与 Android 远端一致性验收。
+- 更新时间：2026-10-02。
+
+### 用户追加：定投计划长按删除
+
+- 状态：done。
+- 修改文件：`client/lib/offline_pages.dart`、`client/lib/data/offline_repository.dart`、`client/test/offline_plan_test.dart`、`client/test/repository_test.dart`、本文件。
+- 已实现：计划列表长按弹出“删除定投计划”选项，再次确认后以事务删除计划和全部关联期次，已经生成的交易记录保留；取消不改变数据，其他计划不受影响。
+- 关联修复：期次 ID 改为由计划 ID 和执行日期组成，避免连续生成多期时因时间戳碰撞覆盖记录；仍按计划/日期检查旧记录以兼容已有数据。
+- 功能说明：“生成一期”要求启用计划；“补录一期”在暂停时也可使用。两者均按所选执行日期创建待记账期次并去重，实际交易需确认扣款/执行后才生成。日期仍须符合起始日期与计划周期。
+- 验证：`flutter test test/offline_plan_test.dart test/repository_test.dart` 16 项通过，覆盖删除确认/取消、期次清理、其他计划隔离和交易保留；相关 analyzer 仅原有 4 条 info；`git diff --check` 通过。
+- 未覆盖：Android 真机长按交互待用户试用。
 - 更新时间：2026-10-02。

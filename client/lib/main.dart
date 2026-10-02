@@ -407,7 +407,11 @@ class _HomeShellState extends State<HomeShell> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) =>
-            LocalPlansPage(open: () => localStorage ??= openLocalRepository()),
+            LocalPlansPage(
+              open: () => localStorage ??= openLocalRepository(),
+              fundsFuture: _loadFundsForEntry,
+              onSearchAndAdd: openSearch,
+            ),
       ),
     );
     if (mounted) setState(reloadFunds);
