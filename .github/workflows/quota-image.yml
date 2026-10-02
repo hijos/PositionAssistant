@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
     paths:
       - '.github/workflows/quota-image.yml'
       - '.dockerignore'
@@ -13,6 +11,8 @@ on:
       - 'package-lock.json'
       - 'scripts/prepare-quota-seed.js'
       - 'quota-service/**'
+      - '!quota-service/README.md'
+      - '!quota-service/deploy/**'
   workflow_dispatch:
 
 permissions:
@@ -64,7 +64,6 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-
-            type=ref,event=tag
 
       - name: Build and push image
         uses: docker/build-push-action@v6
