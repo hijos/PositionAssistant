@@ -569,7 +569,7 @@ class _QuotaPageState extends State<QuotaPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+                padding: const EdgeInsets.symmetric(vertical: 1),
                 child: Text(
                   '${q['name']}',
                   maxLines: 1,
@@ -605,6 +605,7 @@ class _QuotaPageState extends State<QuotaPage> {
                   ],
                 ),
                 right: Wrap(
+                  alignment: WrapAlignment.end,
                   spacing: 10,
                   children: [
                     _channelLine(
@@ -627,7 +628,7 @@ class _QuotaPageState extends State<QuotaPage> {
               _quotaGridRow(
                 scheme,
                 left: Wrap(
-                  spacing: 4,
+                  spacing: 12,
                   runSpacing: 0,
                   children: [
                     _cardAction(
@@ -668,7 +669,7 @@ class _QuotaPageState extends State<QuotaPage> {
     required Widget left,
     required Widget right,
   }) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+    padding: const EdgeInsets.symmetric(vertical: 1),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -754,7 +755,7 @@ class _QuotaPageState extends State<QuotaPage> {
     onPressed: onPressed,
     style: TextButton.styleFrom(
       minimumSize: Size.zero,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       foregroundColor: scheme.primary,
     ),
