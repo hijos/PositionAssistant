@@ -8,6 +8,16 @@ const CHANNELS = new Set(['distribution', 'direct']);
 const DEFAULT_SETTINGS = { minSupport: 3, agreementRatio: 0.8, windowHours: 72 };
 const FUND_CATALOG = JSON.parse(fs.readFileSync(path.join(__dirname, 'fund-catalog.json'), 'utf8'));
 
+// Keep the admin autocomplete source safe to use even if the seed file is
+// edited by hand: a duplicate code would make the UI choose an arbitrary
+// name, and a malformed code cannot be a valid fund identifier.
+if (!Array.isArray(FUND_CATALOG) || FUND_CATALOG.some(item => !item || !/^\d{6}$/.test(String(item.code)) || !String(item.name || '').trim())) {
+  throw new Error('quota-service fund catalog contains an invalid entry');
+}
+if (new Set(FUND_CATALOG.map(item => String(item.code))).size !== FUND_CATALOG.length) {
+  throw new Error('quota-service fund catalog contains duplicate codes');
+}
+
 function clone(value) { return value == null ? value : JSON.parse(JSON.stringify(value)); }
 function timestamp(clock) { return clock().toISOString(); }
 function validCode(code) { return /^\d{6}$/.test(String(code || '')); }

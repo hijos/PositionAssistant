@@ -878,3 +878,12 @@
 - 验证：`flutter analyze lib/main.dart test/holdings_overview_test.dart` 无问题；`flutter test test/holdings_overview_test.dart` 17 项通过。
 - 未覆盖：未在 Android 真机手工确认字体字形和不同系统字体下的视觉效果。
 - 更新时间：2026-10-01。
+
+### 用户追加：额度子服务基金联想目录纠错
+
+- 状态：done
+- 修改文件：`quota-service/fund-catalog.json`、`quota-service/index.js`、`quota-service/README.md`、`test/quota-service.test.js`。
+- 已实现：修正静态联想目录中代码与名称错配，移除实际并非纳斯达克100/标普500的错误条目，补入额度数据库已有但目录缺失的 040046、014978；目录名称与项目 Eastmoney 基金代码快照一致。服务启动时校验六位代码、非空名称和代码唯一性。
+- 验证：`node --check quota-service/index.js`；`node --test test/quota-service.test.js test/quotas-http.test.js`（4 项通过）。
+- 未覆盖：额度子服务仍使用静态目录，不会自动从上游刷新；目录更新后需重启服务加载新文件。
+- 更新时间：2026-10-02。

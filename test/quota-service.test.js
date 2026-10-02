@@ -29,6 +29,12 @@ test('independent quota service supports manual data, consensus and safe revoke'
   const catalog = await request(base, 'GET', '/api/admin/fund-catalog', { token });
   assert.equal(catalog.status, 200);
   assert.ok(catalog.body.items.some(item => item.code === '012752'));
+  const byCode = new Map(catalog.body.items.map(item => [item.code, item.name]));
+  assert.equal(byCode.get('000834'), '大成纳斯达克100ETF联接(QDII)A');
+  assert.equal(byCode.has('008303'), false);
+  assert.equal(byCode.has('020369'), false);
+  assert.equal(byCode.has('040001'), false);
+  assert.equal(new Set(catalog.body.items.map(item => item.code)).size, catalog.body.items.length);
 
   const write = await request(base, 'PUT', '/api/admin/quotas/000001', { token, body: { name: '测试纳指基金', category: '纳斯达克100', channel: 'distribution', status: '限大额', limit: 100, feeRatePercent: 1.5 } });
   assert.equal(write.status, 200);

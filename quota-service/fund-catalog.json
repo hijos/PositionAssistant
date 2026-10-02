@@ -1,18 +1,77 @@
 [
-  {"code":"000834","name":"华夏纳斯达克100ETF联接(QDII)A","category":"纳斯达克100"},
-  {"code":"018043","name":"天弘纳斯达克100指数发起(QDII)A","category":"纳斯达克100"},
-  {"code":"012752","name":"建信纳斯达克100指数(QDII)C人民币","category":"纳斯达克100"},
-  {"code":"539001","name":"建信纳斯达克100指数(QDII)A人民币","category":"纳斯达克100"},
-  {"code":"006479","name":"广发纳斯达克100ETF联接(QDII)C","category":"纳斯达克100"},
-  {"code":"017028","name":"国泰标普500ETF发起联接(QDII)A","category":"标普500"},
-  {"code":"006075","name":"博时标普500ETF联接C","category":"标普500"},
-  {"code":"017641","name":"摩根标普500指数(QDII)人民币A","category":"标普500"},
-  {"code":"018966","name":"汇添富纳斯达克100ETF发起式联接(QDII)A","category":"纳斯达克100"},
-  {"code":"016532","name":"嘉实纳斯达克100ETF发起联接(QDII)A","category":"纳斯达克100"},
-  {"code":"020369","name":"大成纳斯达克100指数(QDII)","category":"纳斯达克100"},
-  {"code":"040001","name":"华安纳斯达克100指数(QDII)","category":"纳斯达克100"},
-  {"code":"019441","name":"万家纳斯达克100指数发起式(QDII)A","category":"纳斯达克100"},
-  {"code":"008303","name":"宝盈纳斯达克100指数(QDII)","category":"纳斯达克100"},
-  {"code":"021000","name":"南方纳斯达克100指数发起(QDII)I","category":"纳斯达克100"},
-  {"code":"019547","name":"招商纳斯达克100ETF发起式联接(QDII)A","category":"纳斯达克100"}
+  {
+    "code": "000834",
+    "name": "大成纳斯达克100ETF联接(QDII)A",
+    "category": "纳斯达克100"
+  },
+  {
+    "code": "006075",
+    "name": "博时标普500ETF联接C",
+    "category": "标普500"
+  },
+  {
+    "code": "006479",
+    "name": "广发纳斯达克100ETF联接人民币(QDII)C",
+    "category": "纳斯达克100"
+  },
+  {
+    "code": "012752",
+    "name": "建信纳斯达克100指数(QDII)C人民币",
+    "category": "纳斯达克100"
+  },
+  {
+    "code": "014978",
+    "name": "华安纳斯达克100ETF联接(QDII)C",
+    "category": "纳斯达克100"
+  },
+  {
+    "code": "016532",
+    "name": "嘉实纳斯达克100ETF发起联接(QDII)A人民币",
+    "category": "纳斯达克100"
+  },
+  {
+    "code": "017028",
+    "name": "国泰标普500ETF发起联接(QDII)A人民币",
+    "category": "标普500"
+  },
+  {
+    "code": "017641",
+    "name": "摩根标普500指数(QDII)人民币A",
+    "category": "标普500"
+  },
+  {
+    "code": "018043",
+    "name": "天弘纳斯达克100指数发起(QDII)A",
+    "category": "纳斯达克100"
+  },
+  {
+    "code": "018966",
+    "name": "汇添富纳斯达克100ETF发起式联接(QDII)人民币A",
+    "category": "纳斯达克100"
+  },
+  {
+    "code": "019441",
+    "name": "万家纳斯达克100指数发起式(QDII)A",
+    "category": "纳斯达克100"
+  },
+  {
+    "code": "019547",
+    "name": "招商纳斯达克100ETF发起式联接(QDII)A",
+    "category": "纳斯达克100"
+  },
+  {
+    "code": "021000",
+    "name": "南方纳斯达克100指数发起(QDII)I",
+    "category": "纳斯达克100"
+  },
+  {
+    "code": "040046",
+    "name": "华安纳斯达克100ETF联接(QDII)A",
+    "category": "纳斯达克100"
+  },
+  {
+    "code": "539001",
+    "name": "建信纳斯达克100指数(QDII)A人民币",
+    "category": "纳斯达克100"
+  }
 ]
