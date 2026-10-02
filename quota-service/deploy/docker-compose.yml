@@ -1,0 +1,20 @@
+services:
+  quota-service:
+    image: ${QUOTA_IMAGE:?Set QUOTA_IMAGE in .env}
+    restart: unless-stopped
+    init: true
+    environment:
+      QUOTA_HOST: 0.0.0.0
+      QUOTA_PORT: 4100
+      QUOTA_DB_PATH: /app/data/db.json
+      QUOTA_ADMIN_PASSWORD: ${QUOTA_ADMIN_PASSWORD:?Set QUOTA_ADMIN_PASSWORD in .env}
+      QUOTA_IP_HASH_SALT: ${QUOTA_IP_HASH_SALT:?Set QUOTA_IP_HASH_SALT in .env}
+      QUOTA_CORS_ORIGIN: ${QUOTA_CORS_ORIGIN:-*}
+      QUOTA_TRUST_PROXY: ${QUOTA_TRUST_PROXY:-0}
+    ports:
+      - "${QUOTA_BIND_HOST:-127.0.0.1}:${QUOTA_PORT:-4100}:4100"
+    volumes:
+      - quota_data:/app/data
+
+volumes:
+  quota_data:

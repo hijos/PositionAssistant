@@ -11,6 +11,8 @@
     "test:nav": "node --test test/nav.test.js",
     "test:market": "node --test test/market.test.js",
     "start:quota": "node quota-service/index.js",
+    "quota:seed": "node scripts/prepare-quota-seed.js",
+    "quota:seed:check": "node scripts/prepare-quota-seed.js --check",
     "test:quota-service": "node --test test/quota-service.test.js"
   },
   "dependencies": {

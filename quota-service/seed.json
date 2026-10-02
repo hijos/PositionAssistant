@@ -1,0 +1,2145 @@
+{
+  "schemaVersion": 1,
+  "version": 75,
+  "settings": {
+    "minSupport": 2,
+    "agreementRatio": 0.8,
+    "windowHours": 720
+  },
+  "quotas": [
+    {
+      "code": "040046",
+      "name": "华安纳斯达克100ETF联接(QDII)A",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 5,
+          "feeRate": 0.008,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-01T14:55:43.867Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 5,
+          "feeRate": 0.008,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-01T15:04:39.347Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.008,
+      "detail": null,
+      "revision": 9,
+      "updatedAt": "2026-10-01T15:04:39.347Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "014978",
+      "name": "华安纳斯达克100ETF联接(QDII)C",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 5,
+          "feeRate": 0.01,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-01T15:04:53.884Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 5,
+          "feeRate": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-01T15:05:52.421Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.01,
+      "detail": null,
+      "revision": 11,
+      "updatedAt": "2026-10-01T15:05:52.421Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "000834",
+      "name": "大成纳斯达克100ETF联接(QDII)A",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:31:10.010Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 100,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:31:10.010Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.01,
+      "detail": null,
+      "revision": 12,
+      "updatedAt": "2026-10-02T01:31:10.010Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "021000",
+      "name": "南方纳斯达克100指数发起(QDII)I",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "未知",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:33:00.726Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 200,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:33:00.726Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0066,
+      "detail": null,
+      "revision": 13,
+      "updatedAt": "2026-10-02T01:33:00.726Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "008971",
+      "name": "大成纳斯达克100ETF联接(QDII)C",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:56:04.370Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 100,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:56:04.370Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.013,
+      "detail": null,
+      "revision": 14,
+      "updatedAt": "2026-10-02T01:56:04.370Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "016452",
+      "name": "南方纳斯达克100指数发起(QDII)A",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:56:43.715Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:56:43.715Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0065,
+      "detail": null,
+      "revision": 15,
+      "updatedAt": "2026-10-02T01:56:43.715Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "016453",
+      "name": "南方纳斯达克100指数发起(QDII)C",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:57:04.758Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:57:04.758Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0075,
+      "detail": null,
+      "revision": 16,
+      "updatedAt": "2026-10-02T01:57:04.758Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "019172",
+      "name": "摩根纳斯达克100指数(QDII)人民币A",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:58:32.266Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:58:32.266Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.006,
+      "detail": null,
+      "revision": 17,
+      "updatedAt": "2026-10-02T01:58:32.266Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "019173",
+      "name": "摩根纳斯达克100指数(QDII)人民币C",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:58:54.070Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T01:58:54.070Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.009,
+      "detail": null,
+      "revision": 18,
+      "updatedAt": "2026-10-02T01:58:54.070Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "019524",
+      "name": "华泰柏瑞纳斯达克100ETF发起式联接(QDII)A",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 5,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:04:18.043Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 5,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:04:18.043Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0065,
+      "detail": null,
+      "revision": 19,
+      "updatedAt": "2026-10-02T02:04:18.043Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "019525",
+      "name": "华泰柏瑞纳斯达克100ETF发起式联接(QDII)C",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 5,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:04:35.522Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 5,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:04:35.522Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.009,
+      "detail": null,
+      "revision": 20,
+      "updatedAt": "2026-10-02T02:04:35.522Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "022664",
+      "name": "华泰柏瑞纳斯达克100ETF发起式联接(QDII)I",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 5,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:05:29.551Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 5,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:05:29.551Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0075,
+      "detail": null,
+      "revision": 21,
+      "updatedAt": "2026-10-02T02:05:29.551Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "019736",
+      "name": "宝盈纳斯达克100指数发起(QDII)A人民币",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员主动接受建议",
+          "sourceType": "admin-accepted-suggestion",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T08:02:04.387Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T08:01:36.103Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0065,
+      "detail": null,
+      "revision": 75,
+      "updatedAt": "2026-10-02T08:02:04.387Z",
+      "source": "管理员主动接受建议",
+      "sourceType": "admin-accepted-suggestion"
+    },
+    {
+      "code": "019737",
+      "name": "宝盈纳斯达克100指数发起(QDII)C人民币",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:05:57.593Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:05:57.593Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.009,
+      "detail": null,
+      "revision": 23,
+      "updatedAt": "2026-10-02T02:05:57.593Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "019441",
+      "name": "万家纳斯达克100指数发起式(QDII)A",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:08:59.858Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 100,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:08:59.858Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0065,
+      "detail": null,
+      "revision": 24,
+      "updatedAt": "2026-10-02T02:08:59.858Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "019442",
+      "name": "万家纳斯达克100指数发起式(QDII)C",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:09:13.249Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 100,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:09:13.249Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0085,
+      "detail": null,
+      "revision": 25,
+      "updatedAt": "2026-10-02T02:09:13.249Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "019547",
+      "name": "招商纳斯达克100ETF发起式联接(QDII)A",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T03:43:06.909Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员主动接受建议",
+          "sourceType": "admin-accepted-suggestion",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T07:31:03.172Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0065,
+      "detail": null,
+      "revision": 73,
+      "updatedAt": "2026-10-02T07:31:03.172Z",
+      "source": "管理员主动接受建议",
+      "sourceType": "admin-accepted-suggestion"
+    },
+    {
+      "code": "019548",
+      "name": "招商纳斯达克100ETF发起式联接(QDII)C",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T07:29:20.411Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T07:29:20.411Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0105,
+      "detail": null,
+      "revision": 72,
+      "updatedAt": "2026-10-02T07:29:20.411Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "539001",
+      "name": "建信纳斯达克100指数(QDII)A人民币",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:10:36.722Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 50,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:10:36.722Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.01,
+      "detail": null,
+      "revision": 28,
+      "updatedAt": "2026-10-02T02:10:36.722Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "012752",
+      "name": "建信纳斯达克100指数(QDII)C人民币",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:10:47.612Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 50,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:10:47.612Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.013,
+      "detail": null,
+      "revision": 29,
+      "updatedAt": "2026-10-02T02:10:47.612Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "023422",
+      "name": "建信纳斯达克100指数(QDII)D人民币",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:11:00.925Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:11:00.925Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.013,
+      "detail": null,
+      "revision": 30,
+      "updatedAt": "2026-10-02T02:11:00.925Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "096001",
+      "name": "大成标普500等权重指数(QDII)A人民币",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 100,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:11:31.937Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 1000,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:11:31.937Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.012,
+      "detail": null,
+      "revision": 31,
+      "updatedAt": "2026-10-02T02:11:31.937Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "008401",
+      "name": "大成标普500等权重指数(QDII)C人民币",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 100,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:11:59.169Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 1000,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:11:59.169Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.015,
+      "detail": null,
+      "revision": 32,
+      "updatedAt": "2026-10-02T02:11:59.169Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "017641",
+      "name": "摩根标普500指数(QDII)人民币A",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:12:11.809Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:12:11.809Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0065,
+      "detail": null,
+      "revision": 33,
+      "updatedAt": "2026-10-02T02:12:11.809Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "019305",
+      "name": "摩根标普500指数(QDII)人民币C",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:12:25.331Z",
+          "error": null
+        },
+        "direct": {
+          "status": "限大额",
+          "limit": 10,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:12:25.331Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0095,
+      "detail": null,
+      "revision": 34,
+      "updatedAt": "2026-10-02T02:12:25.331Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "022525",
+      "name": "天弘纳斯达克100指数发起(QDII)D",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 100,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:18:51.699Z",
+          "error": null
+        },
+        "direct": {
+          "status": "未知",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:18:51.699Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.008,
+      "detail": null,
+      "revision": 35,
+      "updatedAt": "2026-10-02T02:18:51.699Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "018043",
+      "name": "天弘纳斯达克100指数发起(QDII)A",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:19:58.204Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:19:58.204Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.006,
+      "detail": null,
+      "revision": 36,
+      "updatedAt": "2026-10-02T02:19:58.204Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "018044",
+      "name": "天弘纳斯达克100指数发起(QDII)C",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:20:44.835Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:20:44.835Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.008,
+      "detail": null,
+      "revision": 37,
+      "updatedAt": "2026-10-02T02:20:44.835Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "270042",
+      "name": "广发纳斯达克100ETF联接人民币(QDII)A",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:21:23.440Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:21:23.440Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.01,
+      "detail": null,
+      "revision": 38,
+      "updatedAt": "2026-10-02T02:21:23.440Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "006479",
+      "name": "广发纳斯达克100ETF联接人民币(QDII)C",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:22:26.358Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:22:26.358Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.012,
+      "detail": null,
+      "revision": 39,
+      "updatedAt": "2026-10-02T02:22:26.358Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "021778",
+      "name": "广发纳指100ETF联接(QDII)人民币F",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:22:52.547Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:22:52.547Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0118,
+      "detail": null,
+      "revision": 40,
+      "updatedAt": "2026-10-02T02:22:52.547Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "015299",
+      "name": "华夏纳斯达克100ETF发起式联接(QDII)A",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:23:46.156Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:23:46.156Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.008,
+      "detail": null,
+      "revision": 41,
+      "updatedAt": "2026-10-02T02:23:46.156Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "015300",
+      "name": "华夏纳斯达克100ETF发起式联接(QDII)C",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:23:57.107Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:23:57.107Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.011,
+      "detail": null,
+      "revision": 42,
+      "updatedAt": "2026-10-02T02:23:57.107Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "161130",
+      "name": "易方达纳斯达克100ETF联接(QDII-LOF)A(人民币)",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:24:24.094Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:24:24.094Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.006,
+      "detail": null,
+      "revision": 43,
+      "updatedAt": "2026-10-02T02:24:24.094Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "012870",
+      "name": "易方达纳斯达克100ETF联接(QDII-LOF)C(人民币)",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:24:42.901Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:24:42.901Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.009,
+      "detail": null,
+      "revision": 44,
+      "updatedAt": "2026-10-02T02:24:42.901Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "016532",
+      "name": "嘉实纳斯达克100ETF发起联接(QDII)A人民币",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:25:02.581Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:25:02.581Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.006,
+      "detail": null,
+      "revision": 45,
+      "updatedAt": "2026-10-02T02:25:02.581Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "016533",
+      "name": "嘉实纳斯达克100ETF发起联接(QDII)C人民币",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:25:18.303Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:25:18.303Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0085,
+      "detail": null,
+      "revision": 46,
+      "updatedAt": "2026-10-02T02:25:18.303Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "021838",
+      "name": "嘉实纳斯达克100ETF发起联接(QDII)I人民币",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:25:35.583Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:25:35.583Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.007,
+      "detail": null,
+      "revision": 47,
+      "updatedAt": "2026-10-02T02:25:35.583Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "016055",
+      "name": "博时纳斯达克100ETF发起式联接(QDII)A人民币",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:26:03.992Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:26:03.992Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0065,
+      "detail": null,
+      "revision": 48,
+      "updatedAt": "2026-10-02T02:26:03.992Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "016057",
+      "name": "博时纳斯达克100ETF发起式联接(QDII)C人民币",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:26:55.651Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:26:55.651Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0095,
+      "detail": null,
+      "revision": 49,
+      "updatedAt": "2026-10-02T02:26:55.651Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "024237",
+      "name": "博时纳斯达克100ETF发起式联接(QDII)I人民币",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:27:04.666Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:27:04.666Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.008,
+      "detail": null,
+      "revision": 50,
+      "updatedAt": "2026-10-02T02:27:04.666Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "018966",
+      "name": "汇添富纳斯达克100ETF发起式联接(QDII)人民币A",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:28:39.242Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:28:39.242Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0065,
+      "detail": null,
+      "revision": 51,
+      "updatedAt": "2026-10-02T02:28:39.242Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "021773",
+      "name": "汇添富纳斯达克100ETF发起式联接(QDII)人民币E",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:28:56.371Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:28:56.371Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0075,
+      "detail": null,
+      "revision": 52,
+      "updatedAt": "2026-10-02T02:28:56.371Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "018967",
+      "name": "汇添富纳斯达克100ETF发起式联接(QDII)人民币C",
+      "category": "纳斯达克100",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:29:05.935Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:29:05.935Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0105,
+      "detail": null,
+      "revision": 53,
+      "updatedAt": "2026-10-02T02:29:05.935Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "007721",
+      "name": "天弘标普500发起(QDII-FOF)A",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:31:18.572Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:31:18.572Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.008,
+      "detail": null,
+      "revision": 54,
+      "updatedAt": "2026-10-02T02:31:18.572Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "007722",
+      "name": "天弘标普500发起(QDII-FOF)C",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:31:31.836Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:31:31.836Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0105,
+      "detail": null,
+      "revision": 55,
+      "updatedAt": "2026-10-02T02:31:31.836Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "022523",
+      "name": "天弘标普500发起(QDII-FOF)D",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "限大额",
+          "limit": 100,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:32:06.230Z",
+          "error": null
+        },
+        "direct": {
+          "status": "未知",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:32:06.230Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0105,
+      "detail": null,
+      "revision": 56,
+      "updatedAt": "2026-10-02T02:32:06.230Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "050025",
+      "name": "博时标普500ETF联接A",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:34:50.373Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:34:50.373Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.008,
+      "detail": null,
+      "revision": 63,
+      "updatedAt": "2026-10-02T02:34:50.373Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "018738",
+      "name": "博时标普500ETF联接E(人民币)",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:33:01.907Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:33:01.907Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0081,
+      "detail": null,
+      "revision": 59,
+      "updatedAt": "2026-10-02T02:33:01.907Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "018064",
+      "name": "华夏标普500ETF发起式联接(QDII)A(人民币)",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:33:40.006Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:33:40.006Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0075,
+      "detail": null,
+      "revision": 60,
+      "updatedAt": "2026-10-02T02:33:40.006Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "018065",
+      "name": "华夏标普500ETF发起式联接(QDII)C",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:33:51.930Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:33:51.930Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0105,
+      "detail": null,
+      "revision": 61,
+      "updatedAt": "2026-10-02T02:33:51.930Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "006075",
+      "name": "博时标普500ETF联接C",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:34:26.776Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:34:26.776Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0115,
+      "detail": null,
+      "revision": 62,
+      "updatedAt": "2026-10-02T02:34:26.776Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "161125",
+      "name": "易方达标普500指数人民币A",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:35:38.850Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:35:38.850Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.01,
+      "detail": null,
+      "revision": 64,
+      "updatedAt": "2026-10-02T02:35:38.850Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "012860",
+      "name": "易方达标普500指数人民币C",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:35:44.761Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:35:44.761Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0135,
+      "detail": null,
+      "revision": 65,
+      "updatedAt": "2026-10-02T02:35:44.761Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "017028",
+      "name": "国泰标普500ETF发起联接(QDII)A人民币",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:35:56.813Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:35:56.813Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0075,
+      "detail": null,
+      "revision": 66,
+      "updatedAt": "2026-10-02T02:35:56.813Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    },
+    {
+      "code": "017030",
+      "name": "国泰标普500ETF发起联接(QDII)C人民币",
+      "category": "标普500",
+      "channels": {
+        "distribution": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:36:15.421Z",
+          "error": null
+        },
+        "direct": {
+          "status": "暂停申购",
+          "limit": null,
+          "limitType": "per-account-daily",
+          "directPlatform": null,
+          "source": "管理员录入",
+          "sourceType": "manual",
+          "sourceUrl": null,
+          "effectiveFrom": null,
+          "updatedAt": "2026-10-02T02:36:15.421Z",
+          "error": null
+        }
+      },
+      "annualReturn": null,
+      "feeRate": 0.0105,
+      "detail": null,
+      "revision": 67,
+      "updatedAt": "2026-10-02T02:36:15.421Z",
+      "source": "管理员录入",
+      "sourceType": "manual"
+    }
+  ],
+  "corrections": [],
+  "audit": []
+}

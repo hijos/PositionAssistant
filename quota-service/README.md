@@ -41,3 +41,7 @@ flutter run --dart-define=QUOTA_SERVICE_URL=http://192.168.31.143:4100
 ```
 
 Do not use `change-me-now` outside local development.
+
+## Docker deployment
+
+The GitHub Actions image workflow and the production Compose deployment are in [`deploy/`](deploy/). See [`deploy/README.md`](deploy/README.md) for server setup, persistence, backups and upgrades.
