@@ -67,7 +67,7 @@
         <button>保存额度</button>
       </form>
       <p id="quotaMessage" class="muted"></p>
-      <div class="scroll"><table><thead><tr><th><button type="button" class="table-sort" data-sort="code">代码 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="name">名称 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="category">分类 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="distribution">代销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="direct">直销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="feeRate">费率 <span class="sort-indicator"></span></button></th><th>来源/时间</th><th>操作</th></tr></thead><tbody id="quotaRows"></tbody></table></div>
+      <div class="scroll"><table><thead><tr><th><button type="button" class="table-sort" data-sort="code">代码 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="name">名称 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="category">分类 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="distribution">代销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="direct">直销 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="feeRate">费率 <span class="sort-indicator"></span></button></th><th><button type="button" class="table-sort" data-sort="updatedAt">来源/录入时间 <span class="sort-indicator"></span></button></th><th>操作</th></tr></thead><tbody id="quotaRows"></tbody></table></div>
     </div>
     <div class="card"><strong>用户纠错建议</strong><div class="scroll"><table><thead><tr><th>时间</th><th>基金/渠道</th><th>建议</th><th>当前进度</th><th>状态</th></tr></thead><tbody id="correctionRows"></tbody></table></div></div>
     <div class="card"><strong>更新审计与撤销</strong><div class="scroll"><table><thead><tr><th>时间</th><th>类型</th><th>基金/渠道</th><th>说明</th><th>操作</th></tr></thead><tbody id="auditRows"></tbody></table></div></div>
@@ -87,6 +87,7 @@ const channelSortValue = (item, key) => { const channel = item.channels?.[key]; 
 const quotaSortValue = (item, key) => {
   if (key === 'distribution' || key === 'direct') return channelSortValue(item, key);
   if (key === 'feeRate') return item.feeRate == null ? Number.NEGATIVE_INFINITY : Number(item.feeRate);
+  if (key === 'updatedAt') { const timestamp = Date.parse(item.updatedAt || ''); return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY; }
   return String(item[key] ?? '');
 };
 const compareQuotaItems = (a, b) => {
