@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -20,6 +21,17 @@ http.Client _clientWithRows(Map<String, List<Map<String, dynamic>>> rows) {
       headers: {'content-type': 'application/json'},
     );
   });
+}
+
+class _LastRandom implements Random {
+  @override
+  bool nextBool() => true;
+
+  @override
+  double nextDouble() => 0.5;
+
+  @override
+  int nextInt(int max) => max - 1;
 }
 
 void main() {
@@ -52,7 +64,7 @@ void main() {
       'name': '测试基金A',
       'type': '混合型',
       'nav': 1.5,
-      'navDate': '2026-09-28',
+      'navDate': '2026-09-27',
     });
     final nav = LocalNavRepository(
       () async => repository,
@@ -64,6 +76,7 @@ void main() {
           {'FSRQ': '2026-09-28', 'DWJZ': '1.5'},
         ],
       }),
+      random: _LastRandom(),
     );
 
     await nav.refreshLatest();
@@ -79,10 +92,79 @@ void main() {
     );
     expect(snapshot?['nav'], 3.5);
     expect(snapshot?['dailyChange'], 1.25);
-    // A fund that is already current stays untouched but gains no regression.
+    // The non-probe fund is refreshed after the random probe detects a new date.
     final current = await repository.get('funds', '000001');
     expect(current?['nav'], 1.5);
     expect(current?['navDate'], '2026-09-28');
+  });
+
+  test('refreshLatest reuses the persisted NAV probe within the TTL', () async {
+    await repository.put('funds', '000001', {
+      'code': '000001',
+      'name': '测试基金A',
+      'type': '混合型',
+      'nav': 1.5,
+      'navDate': '2026-09-28',
+    });
+    var now = DateTime.utc(2026, 10, 1, 9);
+    var requests = 0;
+    final nav = LocalNavRepository(
+      () async => repository,
+      clock: () => now,
+      random: Random(0),
+      client: MockClient((request) async {
+        requests++;
+        return http.Response(
+          jsonEncode({
+            'Data': {
+              'LSJZList': [
+                {'FSRQ': '2026-09-30', 'DWJZ': '1.6'},
+              ],
+            },
+          }),
+          200,
+        );
+      }),
+    );
+
+    await nav.refreshLatest();
+    await nav.refreshLatest();
+    expect(requests, 1);
+
+    now = now.add(const Duration(minutes: 10, seconds: 1));
+    await nav.refreshLatest();
+    expect(requests, 2);
+  });
+
+  test('market quote windows reuse the persisted TTL cache', () async {
+    var now = DateTime.utc(2026, 10, 1, 9);
+    var requests = 0;
+    final nav = LocalNavRepository(
+      () async => repository,
+      clock: () => now,
+      client: MockClient((request) async {
+        requests++;
+        return http.Response(
+          jsonEncode({
+            'data': {
+              'klines': [
+                '2026-09-29,100,100,100,100,0,0,0',
+                '2026-09-30,102,102,102,102,0,0,0',
+              ],
+            },
+          }),
+          200,
+        );
+      }),
+    );
+
+    expect(await nav.latestQqqDailyChange(), isNotNull);
+    expect(await nav.latestQqqDailyChange(), isNotNull);
+    expect(requests, 1);
+
+    now = now.add(const Duration(minutes: 10, seconds: 1));
+    expect(await nav.latestQqqDailyChange(), isNotNull);
+    expect(requests, 2);
   });
 
   test('refreshLatest keeps previous values when the upstream fetch fails',

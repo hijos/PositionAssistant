@@ -1,14 +1,31 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
 import 'repository.dart';
 
 class LocalNavRepository {
-  LocalNavRepository(this.open, {http.Client? client})
-    : client = client ?? http.Client();
+  LocalNavRepository(
+    this.open, {
+    http.Client? client,
+    this.cacheTtl = const Duration(minutes: 10),
+    DateTime Function()? clock,
+    Random? random,
+  }) : client = client ?? http.Client(),
+       _clock = clock ?? DateTime.now,
+       _random = random ?? Random();
+
+  static const _navFetchMetaCollection = 'navFetchMeta';
+  static const _marketQuoteCacheCollection = 'marketQuoteCache';
   final Future<Repository> Function() open;
   final http.Client client;
+  final Duration cacheTtl;
+  final DateTime Function() _clock;
+  final Random _random;
+  final Map<String, Future<Map<String, dynamic>?>> _navFetches = {};
+  final Map<String, Future<Map<String, double>>> _marketFetches = {};
+  Future<void>? _refreshLatestFuture;
 
   Future<Map<String, dynamic>?> latestQqqDailyChange() async {
     try {
@@ -33,17 +50,7 @@ class LocalNavRepository {
     RepositorySession? session,
   }) async {
     final storage = session ?? await open();
-    final fetched = await _fetchLatest(code);
-    if (fetched != null) {
-      await storage.put('navSnapshots', fetched['id'] as String, fetched);
-      return fetched;
-    }
-    final cached =
-        (await storage.list('navSnapshots'))
-            .where((x) => x['fundCode'] == code)
-            .toList()
-          ..sort((a, b) => '${b['navDate']}'.compareTo('${a['navDate']}'));
-    return cached.isEmpty ? null : cached.first;
+    return _fetchLatestCached(code, storage);
   }
 
   Future<Map<String, dynamic>?> forDate(
@@ -126,16 +133,81 @@ class LocalNavRepository {
   /// transaction is confirmed. Pulling the newest snapshot here keeps the
   /// portfolio view current. Failures leave the previous values untouched.
   Future<void> refreshLatest() async {
-    final storage = await open();
-    final funds = await storage.list('funds');
-    final quoteCache = <String, Future<Map<String, double>>>{};
-    for (final fund in funds) {
-      final code = fund['code'];
-      if (code is! String || !RegExp(r'^\d{6}$').hasMatch(code)) continue;
-      final fetched = await _fetchLatest(code);
-      if (fetched != null) {
-        await storage.put('navSnapshots', fetched['id'] as String, fetched);
+    final pending = _refreshLatestFuture;
+    if (pending != null) return pending;
+    final future = _refreshLatestInternal();
+    _refreshLatestFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_refreshLatestFuture, future)) {
+        _refreshLatestFuture = null;
       }
+    }
+  }
+
+  Future<void> _refreshLatestInternal() async {
+    final storage = await open();
+    final funds = (await storage.list('funds'))
+        .where(
+          (fund) =>
+              fund['code'] is String &&
+              RegExp(r'^\d{6}$').hasMatch(fund['code'] as String),
+        )
+        .toList();
+    if (funds.isEmpty) return;
+
+    final quoteCache = <String, Future<Map<String, double>>>{};
+    final fetchedByCode = <String, Map<String, dynamic>>{};
+    final attemptedCodes = <String>{};
+    final refreshMeta = await storage.get(_navFetchMetaCollection, 'latest');
+
+    // A random fund is a cheap probe for a new official NAV date.  When it has
+    // not changed, the remaining fund NAV endpoints are left untouched; their
+    // cached NAVs are still enough to recompute proxy estimates.
+    if (!_isFresh(refreshMeta?['attemptedAt'])) {
+      final probeCode = funds[_random.nextInt(funds.length)]['code'] as String;
+      attemptedCodes.add(probeCode);
+      final probe = await _fetchLatestCached(probeCode, storage, force: true);
+      if (probe != null) fetchedByCode[probeCode] = probe;
+      final current = await storage.get('funds', probeCode);
+      final probeDate = '${probe?['navDate'] ?? ''}';
+      final currentDate = '${current?['navDate'] ?? ''}';
+      final dateChanged =
+          probe != null &&
+          (currentDate.isEmpty || probeDate.compareTo(currentDate) > 0);
+      if (dateChanged) {
+        for (final fund in funds) {
+          final code = fund['code'] as String;
+          if (code == probeCode) continue;
+          attemptedCodes.add(code);
+          final fetched = await _fetchLatestCached(code, storage, force: true);
+          if (fetched != null) fetchedByCode[code] = fetched;
+        }
+      }
+      await storage.put(_navFetchMetaCollection, 'latest', {
+        'id': 'latest',
+        'attemptedAt': _nowMilliseconds,
+        'probeCode': probeCode,
+        if (probe != null) 'probeNavDate': probe['navDate'],
+      });
+    }
+
+    // A newly added fund has no usable local NAV yet.  Fetch it even when the
+    // ten-minute batch gate is still fresh, otherwise it could remain empty
+    // until the next global refresh window.
+    for (final fund in funds) {
+      final code = fund['code'] as String;
+      final current = await storage.get('funds', code);
+      if (attemptedCodes.contains(code) || _hasUsableNav(current)) continue;
+      attemptedCodes.add(code);
+      final fetched = await _fetchLatestCached(code, storage);
+      if (fetched != null) fetchedByCode[code] = fetched;
+    }
+
+    for (final fund in funds) {
+      final code = fund['code'] as String;
+      final fetched = fetchedByCode[code];
       final current = await storage.get('funds', code);
       if (current == null) continue;
       // A QDII NAV can lag a US close even when today's NAV request fails.
@@ -167,6 +239,80 @@ class LocalNavRepository {
         ),
       });
     }
+  }
+
+  Future<Map<String, dynamic>?> _fetchLatestCached(
+    String code,
+    RepositorySession storage, {
+    bool force = false,
+  }) async {
+    final pending = _navFetches[code];
+    if (pending != null) return pending;
+    final future = _fetchLatestCachedInternal(code, storage, force: force);
+    _navFetches[code] = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_navFetches[code], future)) _navFetches.remove(code);
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fetchLatestCachedInternal(
+    String code,
+    RepositorySession storage, {
+    required bool force,
+  }) async {
+    final cached = await _cachedLatest(storage, code);
+    final meta = await storage.get(_navFetchMetaCollection, code);
+    if (!force && _isFresh(meta?['attemptedAt'])) return cached;
+
+    await storage.put(_navFetchMetaCollection, code, {
+      'id': code,
+      'attemptedAt': _nowMilliseconds,
+    });
+    final fetched = await _fetchLatest(code);
+    if (fetched != null) {
+      await storage.put('navSnapshots', fetched['id'] as String, fetched);
+      await storage.put(_navFetchMetaCollection, code, {
+        'id': code,
+        'attemptedAt': _nowMilliseconds,
+        'lastSuccessAt': _nowMilliseconds,
+      });
+      return fetched;
+    }
+    // Keep the failed attempt timestamp so repeated tab switches do not turn
+    // an upstream outage into a request storm.  A cached snapshot remains
+    // usable by the holdings and transaction flows.
+    return cached;
+  }
+
+  Future<Map<String, dynamic>?> _cachedLatest(
+    RepositorySession storage,
+    String code,
+  ) async {
+    final cached =
+        (await storage.list('navSnapshots'))
+            .where((x) => x['fundCode'] == code)
+            .toList()
+          ..sort((a, b) => '${b['navDate']}'.compareTo('${a['navDate']}'));
+    return cached.isEmpty ? null : cached.first;
+  }
+
+  bool _hasUsableNav(Map<String, dynamic>? fund) {
+    final nav = num.tryParse('${fund?['nav']}');
+    return nav != null &&
+        nav.isFinite &&
+        nav > 0 &&
+        RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch('${fund?['navDate']}');
+  }
+
+  int get _nowMilliseconds => _clock().millisecondsSinceEpoch;
+
+  bool _isFresh(dynamic timestamp) {
+    final value = int.tryParse('$timestamp');
+    if (value == null) return false;
+    final age = _nowMilliseconds - value;
+    return age >= 0 && age < cacheTtl.inMilliseconds;
   }
 
   Future<Map<String, dynamic>> _estimateFromProxy(
@@ -304,6 +450,108 @@ class LocalNavRepository {
     String symbol,
     String baseDate,
   ) async {
+    final storage = await open();
+    final cached = await storage.get(_marketQuoteCacheCollection, symbol);
+    final cachedPoints = _marketPoints(cached?['points']);
+    if (_isFresh(cached?['attemptedAt']) &&
+        cachedPoints.containsKey(baseDate)) {
+      return cachedPoints;
+    }
+    final pending = _marketFetches[symbol];
+    if (pending != null) {
+      final points = await pending;
+      if (points.containsKey(baseDate)) return points;
+    }
+    final future = _fetchAndCacheMarketQuote(
+      symbol,
+      baseDate: baseDate,
+      storage: storage,
+      cachedPoints: cachedPoints,
+    );
+    _marketFetches[symbol] = future;
+    try {
+      final points = await future;
+      if (!points.containsKey(baseDate)) throw StateError('缺少基准日行情');
+      return points;
+    } finally {
+      if (identical(_marketFetches[symbol], future)) {
+        _marketFetches.remove(symbol);
+      }
+    }
+  }
+
+  Future<Map<String, double>> _fetchMarketQuoteWindow(String symbol) async {
+    final storage = await open();
+    final cached = await storage.get(_marketQuoteCacheCollection, symbol);
+    final cachedPoints = _marketPoints(cached?['points']);
+    if (_isFresh(cached?['attemptedAt']) && cachedPoints.length >= 2) {
+      return cachedPoints;
+    }
+    final pending = _marketFetches[symbol];
+    if (pending != null) {
+      final points = await pending;
+      if (points.length >= 2) return points;
+    }
+    final future = _fetchAndCacheMarketQuote(
+      symbol,
+      storage: storage,
+      cachedPoints: cachedPoints,
+    );
+    _marketFetches[symbol] = future;
+    try {
+      final points = await future;
+      if (points.length < 2) throw StateError('行情数据不足');
+      return points;
+    } finally {
+      if (identical(_marketFetches[symbol], future)) {
+        _marketFetches.remove(symbol);
+      }
+    }
+  }
+
+  Future<Map<String, double>> _fetchAndCacheMarketQuote(
+    String symbol, {
+    String? baseDate,
+    required Repository storage,
+    required Map<String, double> cachedPoints,
+  }) async {
+    final attemptedAt = _nowMilliseconds;
+    await storage.put(_marketQuoteCacheCollection, symbol, {
+      'id': symbol,
+      'attemptedAt': attemptedAt,
+      'points': cachedPoints,
+    });
+    try {
+      final fetched = await _fetchMarketQuoteFromNetwork(symbol, baseDate);
+      final merged = {...cachedPoints, ...fetched};
+      await storage.put(_marketQuoteCacheCollection, symbol, {
+        'id': symbol,
+        'attemptedAt': _nowMilliseconds,
+        'lastSuccessAt': _nowMilliseconds,
+        'points': merged,
+      });
+      return merged;
+    } catch (error) {
+      // Preserve a usable stale quote and throttle retries for the same
+      // ten-minute window when the upstream source is rate-limited.
+      await storage.put(_marketQuoteCacheCollection, symbol, {
+        'id': symbol,
+        'attemptedAt': _nowMilliseconds,
+        'points': cachedPoints,
+      });
+      if (baseDate == null
+          ? cachedPoints.length >= 2
+          : cachedPoints.containsKey(baseDate)) {
+        return cachedPoints;
+      }
+      rethrow;
+    }
+  }
+
+  Future<Map<String, double>> _fetchMarketQuoteFromNetwork(
+    String symbol,
+    String? baseDate,
+  ) async {
     try {
       return await _fetchEastmoneyQuote(symbol, baseDate);
     } catch (_) {
@@ -311,12 +559,16 @@ class LocalNavRepository {
     }
   }
 
-  Future<Map<String, double>> _fetchMarketQuoteWindow(String symbol) async {
-    try {
-      return await _fetchEastmoneyQuote(symbol, null);
-    } catch (_) {
-      return _fetchYahooQuote(symbol, null);
+  Map<String, double> _marketPoints(dynamic raw) {
+    if (raw is! Map) return <String, double>{};
+    final points = <String, double>{};
+    for (final entry in raw.entries) {
+      final value = num.tryParse('${entry.value}');
+      if (value != null && value.isFinite && value > 0) {
+        points['${entry.key}'] = value.toDouble();
+      }
     }
+    return points;
   }
 
   Future<Map<String, double>> _fetchEastmoneyQuote(
