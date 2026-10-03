@@ -334,13 +334,18 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
                         vertical: 12,
                       ),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'amount', child: Text('按金额录入')),
-                      DropdownMenuItem(value: 'shares', child: Text('按份额录入')),
+                    items: [
                       DropdownMenuItem(
-                        value: 'holding',
-                        child: Text('按持有金额和持有收益录入'),
+                        value: 'amount',
+                        child: Text(
+                          '按${transactionType == 'buy' ? '买入' : '卖出'}金额和${transactionType == 'buy' ? '买入' : '卖出'}时间',
+                        ),
                       ),
+                      if (transactionType == 'buy')
+                        DropdownMenuItem(
+                          value: 'holding',
+                          child: Text('按持有金额和持有收益'),
+                        ),
                     ],
                     onChanged: busy
                         ? null
@@ -501,84 +506,86 @@ class _TransactionEntryPageState extends State<TransactionEntryPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '成交确认时间',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  if (entryMode != 'holding') ...[
+                    Text(
+                      '成交确认时间',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 6,
-                        child: OutlinedButton.icon(
-                          onPressed: busy
-                              ? null
-                              : () async {
-                                  final picked = await showDatePicker(
-                                    context: context,
-                                    initialDate:
-                                        DateTime.tryParse(date) ??
-                                        DateTime.now(),
-                                    firstDate: DateTime(2000),
-                                    lastDate: DateTime.now(),
-                                  );
-                                  if (picked == null || !mounted) return;
-                                  setState(() {
-                                    date =
-                                        '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
-                                    previewResult = null;
-                                  });
-                                },
-                          icon: const Icon(
-                            Icons.calendar_today_outlined,
-                            size: 16,
-                          ),
-                          label: Text(date),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 12,
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 6,
+                          child: OutlinedButton.icon(
+                            onPressed: busy
+                                ? null
+                                : () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate:
+                                          DateTime.tryParse(date) ??
+                                          DateTime.now(),
+                                      firstDate: DateTime(2000),
+                                      lastDate: DateTime.now(),
+                                    );
+                                    if (picked == null || !mounted) return;
+                                    setState(() {
+                                      date =
+                                          '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                                      previewResult = null;
+                                    });
+                                  },
+                            icon: const Icon(
+                              Icons.calendar_today_outlined,
+                              size: 16,
+                            ),
+                            label: Text(date),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 12,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        flex: 5,
-                        child: DropdownButtonFormField<String>(
-                          initialValue: cutoff,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 12,
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 5,
+                          child: DropdownButtonFormField<String>(
+                            initialValue: cutoff,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 12,
+                              ),
                             ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'before',
+                                child: Text('15:00 前'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'after',
+                                child: Text('15:00 后'),
+                              ),
+                            ],
+                            onChanged: busy
+                                ? null
+                                : (value) {
+                                    if (value == null) return;
+                                    setState(() {
+                                      cutoff = value;
+                                      previewResult = null;
+                                    });
+                                  },
                           ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'before',
-                              child: Text('15:00 前'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'after',
-                              child: Text('15:00 后'),
-                            ),
-                          ],
-                          onChanged: busy
-                              ? null
-                              : (value) {
-                                  if (value == null) return;
-                                  setState(() {
-                                    cutoff = value;
-                                    previewResult = null;
-                                  });
-                                },
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   Text(
                     '备注（可选）',

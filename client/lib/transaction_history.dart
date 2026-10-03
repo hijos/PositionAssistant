@@ -375,6 +375,7 @@ class TransactionHistoryPageState extends State<TransactionHistoryPage> {
     }
     final date = item['date'] ?? '未记录操作日期';
     final navDate = item['navDate'] ?? '未记录净值日期';
+    if (item['entryMode'] == 'holding') return '$date · 操作日期 $date';
     return '$date · 净值日期 $navDate';
   }
 
@@ -479,7 +480,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     item['holdingProfit'] != null
                         ? '按持有金额和持有收益'
                         : '按持有金额和持有收益率',
-                  _ => '按金额',
+                  _ => isBuy ? '按买入金额和买入时间' : '按卖出金额和卖出时间',
                 },
               ),
               if (item['entryMode'] == 'holding') ...[
@@ -515,9 +516,22 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             context,
             '净值与状态',
             _rows([
-              ('成交净值', _number(item['tradeNav'] ?? item['nav'])),
-              ('净值日期', item['navDate'] ?? '未记录'),
-              ('状态', _statusLabel(status)),
+              (
+                '成交净值',
+                item['entryMode'] == 'holding'
+                    ? '-'
+                    : _number(item['tradeNav'] ?? item['nav']),
+              ),
+              (
+                '净值日期',
+                item['entryMode'] == 'holding'
+                    ? '-'
+                    : (item['navDate'] ?? '未记录'),
+              ),
+              (
+                '状态',
+                item['entryMode'] == 'holding' ? '-' : _statusLabel(status),
+              ),
               if (status == 'pending')
                 ('待确认原因', item['pendingReason'] ?? '正式净值尚未公布'),
               if (status == 'cancelled') ('取消时间', item['cancelledAt'] ?? '未记录'),

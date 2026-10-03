@@ -83,8 +83,14 @@ function applyConfirmedNav(transaction){
  db.funds.push({code:transaction.fundCode,name:transaction.fundName||transaction.fundCode,nav:Number(transaction.tradeNav),navDate:transaction.navDate,source:'交易确认正式净值',sourceType:'official'});
 }
 async function settle(t){
- const date=eligibleNavStartDate(t.date,t.cutoff);
  try {
+  if(t.entryMode==='holding'){
+   const rows=(await history(t.fundCode)).sort((a,b)=>b.navDate.localeCompare(a.navDate));
+   const n=rows[0];
+   if(n)return {...calculate(t,n.nav),navDate:n.navDate};
+   return {...t,status:'pending',pendingReason:'暂无可用正式净值，公布后自动计算份额'};
+  }
+  const date=eligibleNavStartDate(t.date,t.cutoff);
   const rows=(await history(t.fundCode,date)).sort((a,b)=>a.navDate.localeCompare(b.navDate));
   const navDate=selectNextNavDate(t.date,t.cutoff,rows);
   const n=rows.find(row=>row.navDate===navDate);

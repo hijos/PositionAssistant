@@ -261,9 +261,13 @@ class _LocalPlansPageState extends State<LocalPlansPage> {
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'amount', child: Text('按金额录入')),
-                      DropdownMenuItem(value: 'shares', child: Text('按份额录入')),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'amount',
+                        child: Text(
+                          '按${transactionType == 'buy' ? '买入' : '卖出'}金额和${transactionType == 'buy' ? '买入' : '卖出'}时间',
+                        ),
+                      ),
                     ],
                     onChanged: (value) => setDialogState(() {
                       entryMode = value ?? entryMode;
